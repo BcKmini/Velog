@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 15 * * *'  # ÇÑ±¹ ½Ã°£ ±âÁØ ¸ÅÀÏ ÀÚÁ¤ (UTC+9)
+    - cron: '0 15 * * *'  # í•œêµ­ ì‹œê°„ ê¸°ì¤€ ë§¤ì¼ ìì • (UTC+9)
 
 jobs:
   update_blog:
@@ -29,7 +29,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install feedparser gitpython
+       pip install feedparser gitpython requests beautifulsoup4
     
     - name: Run script
       env:
