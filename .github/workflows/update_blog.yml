@@ -10,28 +10,31 @@ on:
 jobs:
   update_blog:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    
-    - name: Push changes
-      env:
-        GH_PAT: ${{ secrets.GH_PAT }}
-      run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git push https://$GH_PAT@github.com/BcKmini/Velog.git
-    
+      with:
+        token: ${{ secrets.GH_PAT }}
+        fetch-depth: 0
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
-    
+
     - name: Install dependencies
       run: |
-       pip install feedparser gitpython requests beautifulsoup4
-    
-    - name: Run script
+        pip install feedparser gitpython requests beautifulsoup4
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Run script and push changes
       env:
-        VELOG_URL: https://velog.io/@mi_nini/posts
-      run: python scripts/update_blog.py
+        GH_PAT: ${{ secrets.GH_PAT }}
+      run: |
+        python scripts/update_blog.py
+        git push https://$GH_PAT@github.com/BcKmini/Velog.git
