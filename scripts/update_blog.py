@@ -1,57 +1,45 @@
 import feedparser
 import git
 import os
-import re
-from datetime import datetime
 
 # 벨로그 RSS 피드 URL
+# example : rss_url = 'https://api.velog.io/rss/@soozi'
 rss_url = 'https://api.velog.io/rss/@mi_nini'
+
+# 깃허브 레포지토리 경로
 repo_path = '.'
+
+# 'velog-posts' 폴더 경로
 posts_dir = os.path.join(repo_path, 'velog-posts')
 
+# 'velog-posts' 폴더가 없다면 생성
 if not os.path.exists(posts_dir):
     os.makedirs(posts_dir)
 
+# 레포지토리 로드
 repo = git.Repo(repo_path)
 
-def clean_filename(title):
-    # 파일명에서 사용할 수 없는 문자 제거 및 대체
-    clean_title = re.sub(r'[\\/*?:"<>|]', "", title)
-    clean_title = clean_title.replace(' ', '_')
-    return clean_title[:100]  # 파일명 길이 제한
+# RSS 피드 파싱
+feed = feedparser.parse(rss_url)
 
-def get_full_content(entry):
-    return entry.content[0].value if 'content' in entry else entry.description
+# 각 글을 파일로 저장하고 커밋
+for entry in feed.entries:
+    # 파일 이름에서 유효하지 않은 문자 제거 또는 대체
+    file_name = entry.title
+    file_name = file_name.replace('/', '-')  # 슬래시를 대시로 대체
+    file_name = file_name.replace('\\', '-')  # 백슬래시를 대시로 대체
+    # 필요에 따라 추가 문자 대체
+    file_name += '.md'
+    file_path = os.path.join(posts_dir, file_name)
 
-try:
-    feed = feedparser.parse(rss_url)
-    for entry in feed.entries:
-        file_name = clean_filename(entry.title) + '.md'
-        file_path = os.path.join(posts_dir, file_name)
-        
-        content = f"""---
-title: {entry.title}
-date: {datetime.strptime(entry.published, "%a, %d %b %Y %H:%M:%S %z").strftime("%Y-%m-%d %H:%M:%S")}
-url: {entry.link}
----
+    # 파일이 이미 존재하지 않으면 생성
+    if not os.path.exists(file_path):
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(entry.description)  # 글 내용을 파일에 작성
 
-{get_full_content(entry)}
-"""
-        
-        if not os.path.exists(file_path) or open(file_path, 'r', encoding='utf-8').read() != content:
-            with open(file_path, 'w', encoding='utf-8') as file:
-                file.write(content)
-            repo.git.add(file_path)
-            repo.git.commit('-m', f'Add/Update post: {entry.title}')
-            print(f"Added/Updated: {entry.title}")
-        else:
-            print(f"No changes: {entry.title}")
+        # 깃허브 커밋
+        repo.git.add(file_path)
+        repo.git.commit('-m', f'Add post: {entry.title}')
 
-    if repo.is_dirty():
-        repo.git.push()
-        print("Changes pushed to remote repository")
-    else:
-        print("No changes to push")
-
-except Exception as e:
-    print(f"An error occurred: {str(e)}")
+# 변경 사항을 깃허브에 푸시
+repo.git.push()
