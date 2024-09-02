@@ -3,8 +3,9 @@ import git
 import os
 
 # 벨로그 RSS 피드 URL
-# example : rss_url = 'https://api.velog.io/rss/@soozi'
+# 정확한 velog에 주소 필요
 rss_url = 'https://api.velog.io/rss/@mi_nini'
+
 
 # 깃허브 레포지토리 경로
 repo_path = '.'
