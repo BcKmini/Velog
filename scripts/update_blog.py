@@ -6,10 +6,10 @@ import os
 # 정확한 velog에 주소 필요
 rss_url = 'https://api.velog.io/rss/@mi_nini'
 
-
 # 깃허브 레포지토리 경로
 repo_path = '.'
 
+# velog에 title에 따른 커밋이 필요함
 # 'velog-posts' 폴더 경로
 posts_dir = os.path.join(repo_path, 'velog-posts')
 
