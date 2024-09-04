@@ -18,6 +18,12 @@ if not os.path.exists(posts_dir):
 # 레포지토리 로드
 repo = git.Repo(repo_path)
 
+# 원격 저장소의 변경 사항을 로컬로 가져오기
+try:
+    repo.git.pull('origin', 'main')
+except git.exc.GitCommandError as e:
+    print(f"Failed to pull from remote: {e}")
+
 # RSS 피드 파싱
 feed = feedparser.parse(rss_url)
 
@@ -58,4 +64,7 @@ for entry in feed.entries:
         repo.git.commit('-m', f'Add post: {entry.title} to series: {series_name}')
 
 # 변경 사항을 깃허브에 푸시
-repo.git.push()
+try:
+    repo.git.push('origin', 'main')
+except git.exc.GitCommandError as e:
+    print(f"Failed to push to remote: {e}")
