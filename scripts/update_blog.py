@@ -21,18 +21,17 @@ repo = git.Repo(repo_path)
 # RSS 피드 파싱
 feed = feedparser.parse(rss_url)
 
-# 각 글을 태그별로 파일로 저장하고 커밋
+# 각 글을 파일로 저장하고 커밋
 for entry in feed.entries:
-    # 태그가 없는 경우 'untagged' 폴더에 저장
-    if not entry.tags:
-        tag_dir = os.path.join(posts_dir, 'untagged')
-    else:
-        # 첫 번째 태그를 사용하여 폴더 생성
-        tag_dir = os.path.join(posts_dir, entry.tags[0].term)
+    # 시리즈 이름 가져오기 (시리즈가 없는 경우 기본 폴더에 저장)
+    series_name = entry.get('tags', [{'term': 'default'}])[0]['term']  # 시리즈명이 없으면 'default' 폴더에 저장
 
-    # 태그 폴더가 없다면 생성
-    if not os.path.exists(tag_dir):
-        os.makedirs(tag_dir)
+    # 시리즈 폴더 경로
+    series_dir = os.path.join(posts_dir, series_name)
+
+    # 시리즈 폴더가 없다면 생성
+    if not os.path.exists(series_dir):
+        os.makedirs(series_dir)
 
     # 파일 이름에서 유효하지 않은 문자 제거 또는 대체
     file_name = entry.title
@@ -40,7 +39,9 @@ for entry in feed.entries:
     file_name = file_name.replace('\\', '-')  # 백슬래시를 대시로 대체
     # 필요에 따라 추가 문자 대체
     file_name += '.md'
-    file_path = os.path.join(tag_dir, file_name)
+
+    # 파일 경로
+    file_path = os.path.join(series_dir, file_name)
 
     # 파일이 이미 존재하지 않으면 생성
     if not os.path.exists(file_path):
@@ -49,7 +50,7 @@ for entry in feed.entries:
 
         # 깃허브 커밋
         repo.git.add(file_path)
-        repo.git.commit('-m', f'Add post: {entry.title} in {entry.tags[0].term if entry.tags else "untagged"}')
+        repo.git.commit('-m', f'Add post: {entry.title} to series: {series_name}')
 
 # 변경 사항을 깃허브에 푸시
 repo.git.push()
