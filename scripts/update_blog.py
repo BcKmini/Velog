@@ -21,6 +21,11 @@ repo = git.Repo(repo_path)
 # RSS 피드 파싱
 feed = feedparser.parse(rss_url)
 
+# 이미 커밋된 파일 목록 가져오기
+committed_files = set()
+for commit in repo.iter_commits('--all'):
+    committed_files.update(commit.stats.files.keys())
+
 # 각 글을 파일로 저장하고 커밋
 for entry in feed.entries:
     # 시리즈 이름 가져오기 (시리즈가 없는 경우 기본 폴더에 저장)
@@ -43,8 +48,8 @@ for entry in feed.entries:
     # 파일 경로
     file_path = os.path.join(series_dir, file_name)
 
-    # 파일이 이미 존재하지 않으면 생성
-    if not os.path.exists(file_path):
+    # 파일이 이미 존재하지 않으며, 다른 시리즈에 커밋되지 않은 경우에만 생성
+    if file_path not in committed_files and not os.path.exists(file_path):
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(entry.description)  # 글 내용을 파일에 작성
 
