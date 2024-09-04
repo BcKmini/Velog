@@ -24,7 +24,7 @@ feed = feedparser.parse(rss_url)
 # 각 글을 파일로 저장하고 커밋
 for entry in feed.entries:
     # 시리즈 이름 가져오기 (시리즈가 없는 경우 기본 폴더에 저장)
-    series_name = entry.get('tags', [{'term': '3-1_summer'}])[0]['term']  # 시리즈명이 없으면 'default' 폴더에 저장
+    series_name = entry.get('tags', [{'term': '3-2'}])[0]['term']  # 시리즈명이 없으면 'default' 폴더에 저장
 
     # 시리즈 폴더 경로
     series_dir = os.path.join(posts_dir, series_name)
