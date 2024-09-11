@@ -8,7 +8,6 @@ rss_url = 'https://api.velog.io/rss/@mi_nini'
 # 깃허브 레포지토리 경로
 repo_path = '.'
 
-#
 # 시리즈별 폴더 경로
 posts_dir_3_2 = os.path.join(repo_path, 'velog-posts/3-2')
 posts_dir_3_1_summer = os.path.join(repo_path, 'velog-posts/3-1_summer')
