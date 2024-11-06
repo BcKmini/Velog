@@ -9,4 +9,3 @@ This repository automatically commits my technical blog posts from [Velog](https
 🖋 **Real-time Updates**: Changes are immediately reflected when a post is edited. (Updates are scheduled every 10 minutes)  
 
 📌 **Smart Commits**: Commit messages automatically include the post title and link.
-
