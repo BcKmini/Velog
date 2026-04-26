@@ -1,57 +1,91 @@
 import feedparser
 import git
 import os
+import json
+import re
+from datetime import datetime
 
-# 벨로그 RSS 피드 URL
 rss_url = 'https://api.velog.io/rss/@mi_nini'
-
-
-# 깃허브 레포지토리 경로
 repo_path = '.'
 
-# 시리즈별 폴더 경로
-posts_dir_3_2 = os.path.join(repo_path, 'velog-posts/3-2')
-posts_dir_3_1_summer = os.path.join(repo_path, 'velog-posts/3-1_summer')
+base_dir = os.path.join(repo_path, 'velog-posts')
+index_file = os.path.join(base_dir, 'post_index.json')
 
-# 'velog-posts/3-2' 폴더가 없다면 생성
-if not os.path.exists(posts_dir_3_2):
-    os.makedirs(posts_dir_3_2)
-
-# 레포지토리 로드
 repo = git.Repo(repo_path)
-
-# RSS 피드 파싱
 feed = feedparser.parse(rss_url)
 
-# 3-1_summer 폴더의 파일 목록 가져오기 (중복 체크를 위해)
-existing_files_3_1 = set()
-if os.path.exists(posts_dir_3_1_summer):
-    existing_files_3_1 = set(os.listdir(posts_dir_3_1_summer))
+# 폴더 생성
+if not os.path.exists(base_dir):
+    os.makedirs(base_dir)
 
-# 각 글을 파일로 저장하고 커밋
+# 인덱스 로드
+if os.path.exists(index_file):
+    with open(index_file, 'r', encoding='utf-8') as f:
+        post_index = json.load(f)
+else:
+    post_index = {}
+
+new_posts = False
+
+def sanitize_filename(name):
+    name = re.sub(r'[\\/*?:"<>|]', '-', name)
+    name = name.strip()
+    return name
+
 for entry in feed.entries:
-    # 파일 이름에서 유효하지 않은 문자 제거 또는 대체
-    file_name = entry.title
-    file_name = file_name.replace('/', '-')  # 슬래시를 대시로 대체
-    file_name = file_name.replace('\\', '-')  # 백슬래시를 대시로 대체
-    file_name += '.md'
+    post_id = entry.link
 
-    # 중복 여부 체크
-    if file_name in existing_files_3_1:
-        print(f"Skipping {file_name} as it already exists in 3-1_summer")
+    if post_id in post_index:
+        print(f"Skip: {entry.title}")
         continue
 
-    # 파일 경로 생성
-    file_path = os.path.join(posts_dir_3_2, file_name)
+    # 날짜 처리
+    if hasattr(entry, 'published_parsed') and entry.published_parsed:
+        dt = datetime(*entry.published_parsed[:6])
+    else:
+        dt = datetime.now()
 
-    # 파일이 이미 존재하지 않으면 생성
-    if not os.path.exists(file_path):
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(entry.description)  # 글 내용을 파일에 작성
+    year = str(dt.year)
+    month = str(dt.month).zfill(2)
+    date_prefix = dt.strftime('%Y-%m-%d')
 
-        # 깃허브 커밋
-        repo.git.add(file_path)
-        repo.git.commit('-m', f'Add post: {entry.title}')
+    # 폴더 생성 (YYYY/MM)
+    target_dir = os.path.join(base_dir, year, month)
+    os.makedirs(target_dir, exist_ok=True)
 
-# 변경 사항을 깃허브에 푸시
-repo.git.push()
+    # 파일명 (정렬 고려)
+    safe_title = sanitize_filename(entry.title)
+    file_name = f"{date_prefix}_{safe_title}.md"
+    file_path = os.path.join(target_dir, file_name)
+
+    # 본문 (간단 markdown 형태)
+    content = f"""---
+title: "{entry.title}"
+date: {dt.strftime('%Y-%m-%d %H:%M:%S')}
+link: {entry.link}
+---
+
+{entry.description}
+"""
+
+    # 저장
+    with open(file_path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    # 인덱스 업데이트
+    post_index[post_id] = file_path
+
+    repo.git.add(file_path)
+    print(f"Added: {file_name}")
+    new_posts = True
+
+# 인덱스 커밋
+if new_posts:
+    with open(index_file, 'w', encoding='utf-8') as f:
+        json.dump(post_index, f, indent=2, ensure_ascii=False)
+
+    repo.git.add(index_file)
+    repo.git.commit('-m', f'Auto sync velog posts ({datetime.now().strftime("%Y-%m-%d %H:%M")})')
+    repo.git.push()
+else:
+    print("No new posts.")
