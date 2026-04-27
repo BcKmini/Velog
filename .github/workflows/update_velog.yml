@@ -43,5 +43,6 @@ jobs:
 
         git commit -m "Auto update velog"
 
+        # 브랜치 이름 확인 (main 기준)
         git pull --rebase origin main
         git push
