@@ -13,7 +13,7 @@ os.makedirs(BASE_DIR, exist_ok=True)
 # ---------------------------
 # 1. Velog GraphQL로 전체 글 가져오기
 # ---------------------------
-def get_posts():
+def get_all_posts():
     url = "https://v2.velog.io/graphql"
 
     query = """
