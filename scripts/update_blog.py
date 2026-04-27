@@ -120,9 +120,6 @@ if new_posts:
 
     repo.git.add(index_file)
 
-    repo.git.commit(
-        '-m',
-        f'Auto sync velog posts ({datetime.now().strftime("%Y-%m-%d %H:%M")})'
-    )
+    print("New posts added.")
 else:
     print("No new posts.")
