@@ -1,23 +1,25 @@
 ---
 title: "CART & Ensumble"
 date: 2025-06-19 17:19:56
-link: https://velog.io/@mi_nini/CART-Ensumble
 ---
 
-<h1 id="비지도-학습-및-앙상블-주요-코드">비지도 학습 및 앙상블 주요 코드</h1>
-<h2 id="목차">목차</h2>
-<ul>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-4-cart-%EB%B6%84%EB%A5%98-%ED%8A%B8%EB%A6%AC-classification-tree">파트 4: CART: 분류 트리 (Classification Tree)</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-5-cart-%ED%9A%8C%EA%B7%80-%ED%8A%B8%EB%A6%AC-regression-tree">파트 5: CART: 회귀 트리 (Regression Tree)</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-6-%EB%AA%A8%EB%8D%B8-%EC%9D%BC%EB%B0%98%ED%99%94-%ED%8F%89%EA%B0%80--%EA%B5%90%EC%B0%A8-%EA%B2%80%EC%A6%9D">파트 6: 모델 일반화 평가 &amp; 교차 검증</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-7-bagging">파트 7: Bagging</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-8-adaboost">파트 8: AdaBoost</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-9-voting-classifier">파트 9: Voting Classifier</a>  </li>
-<li><a href="https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-10-random-forest-regressor">파트 10: Random Forest Regressor</a>  </li>
-</ul>
-<hr />
-<h2 id="파트-4-cart-분류-트리-classification-tree">파트 4. CART: 분류 트리 (Classification Tree)</h2>
-<pre><code class="language-python"># 페이지 15
+# 비지도 학습 및 앙상블 주요 코드
+
+## 목차
+- [파트 4: CART: 분류 트리 (Classification Tree)](#파트-4-cart-분류-트리-classification-tree)  
+- [파트 5: CART: 회귀 트리 (Regression Tree)](#파트-5-cart-회귀-트리-regression-tree)  
+- [파트 6: 모델 일반화 평가 &amp; 교차 검증](#파트-6-모델-일반화-평가--교차-검증)  
+- [파트 7: Bagging](#파트-7-bagging)  
+- [파트 8: AdaBoost](#파트-8-adaboost)  
+- [파트 9: Voting Classifier](#파트-9-voting-classifier)  
+- [파트 10: Random Forest Regressor](#파트-10-random-forest-regressor)  
+
+---
+
+## 파트 4. CART: 분류 트리 (Classification Tree)
+
+```python
+# 페이지 15
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -36,10 +38,13 @@ dt.fit(X_train, y_train)
 
 # 예측 &amp; 평가
 y_pred = dt.predict(X_test)
-print(accuracy_score(y_test, y_pred))</code></pre>
-<hr />
-<h2 id="파트-5-cart-회귀-트리-regression-tree">파트 5. CART: 회귀 트리 (Regression Tree)</h2>
-<pre><code class="language-python"># 페이지 20
+print(accuracy_score(y_test, y_pred))
+```
+
+---
+## 파트 5. CART: 회귀 트리 (Regression Tree)
+```python
+# 페이지 20
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error as MSE
@@ -58,10 +63,13 @@ dt.fit(X_train, y_train)
 # 예측 &amp; 평가 (RMSE)
 y_pred = dt.predict(X_test)
 rmse = MSE(y_test, y_pred) ** 0.5
-print(rmse)</code></pre>
-<hr />
-<h2 id="파트-6-모델-일반화-평가--교차-검증">파트 6. 모델 일반화 평가 &amp; 교차 검증</h2>
-<pre><code class="language-python"># 페이지 21-23
+print(rmse)
+```
+
+---
+## 파트 6. 모델 일반화 평가 &amp; 교차 검증
+```python
+# 페이지 21-23
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_squared_error as MSE
@@ -95,10 +103,13 @@ y_test_pred = dt.predict(X_test)
 # 결과 출력
 print('CV MSE:', mse_cv.mean())
 print('Train MSE:', MSE(y_train, y_train_pred))
-print('Test MSE:', MSE(y_test, y_test_pred))</code></pre>
-<hr />
-<h3 id="파트-7-bagging">파트 7. Bagging</h3>
-<pre><code class="language-python"># 페이지 8-9, 15
+print('Test MSE:', MSE(y_test, y_test_pred))
+```
+
+---
+### 파트 7. Bagging
+```python
+# 페이지 8-9, 15
 from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
@@ -132,10 +143,14 @@ print('Bagging Accuracy:', accuracy_score(y_test, y_pred))
 # OOB 평가 (oob_score=True 설정 시)
 # bc = BaggingClassifier(base_estimator=dt, n_estimators=300, oob_score=True, n_jobs=-1)
 # bc.fit(X_train, y_train)
-# print('OOB Accuracy:', bc.oob_score_)</code></pre>
-<hr />
-<h2 id="파트-8-adaboost">파트 8. AdaBoost</h2>
-<pre><code class="language-python"># 페이지 8-9
+# print('OOB Accuracy:', bc.oob_score_)
+```
+
+---
+
+## 파트 8. AdaBoost
+```python
+# 페이지 8-9
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import roc_auc_score
@@ -162,10 +177,15 @@ adb_clf.fit(X_train, y_train)
 y_proba = adb_clf.predict_proba(X_test)[:, 1]
 
 # 평가 (ROC AUC)
-print('ROC AUC:', roc_auc_score(y_test, y_proba))</code></pre>
-<hr />
-<h2 id="파트-9-voting-classifier">파트 9: Voting Classifier</h2>
-<pre><code class="language-python"># 1) 라이브러리 임포트
+print('ROC AUC:', roc_auc_score(y_test, y_proba))
+```
+
+---
+
+## 파트 9: Voting Classifier
+
+```python
+# 1) 라이브러리 임포트
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
@@ -195,10 +215,13 @@ voting_clf.fit(X_train, y_train)
 
 # 5) 예측 및 평가
 y_pred = voting_clf.predict(X_test)
-print(accuracy_score(y_test, y_pred))</code></pre>
-<hr />
-<h2 id="파트-10-random-forestregressor">파트 10: Random ForestRegressor</h2>
-<pre><code class="language-python"># 1) 라이브러리 임포트
+print(accuracy_score(y_test, y_pred))
+```
+
+---
+## 파트 10: Random ForestRegressor
+```python
+# 1) 라이브러리 임포트
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error as MSE
@@ -223,4 +246,5 @@ rf.fit(X_train, y_train)
 y_pred = rf.predict(X_test)
 rmse = MSE(y_test, y_pred) ** 0.5
 print(f'Test set RMSE of rf: {rmse:.2f}')
-</code></pre>
+
+```
