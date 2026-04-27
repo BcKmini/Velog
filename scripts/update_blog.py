@@ -103,7 +103,7 @@ def sanitize(text):
 # 5. 전체 실행
 # ---------------------------
 def main():
-    posts = get_posts()
+    posts = get_all_posts()
 
     for post in posts:
         slug = post["url_slug"]
