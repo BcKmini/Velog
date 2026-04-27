@@ -1,16 +1,16 @@
-name: Update Velog Posts
+name: Update Velog Backup
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '0 */6 * * *'  # 6시간마다 실행 (과도한 요청 방지)
   workflow_dispatch:
 
 concurrency:
-  group: velog-sync
+  group: velog-backup
   cancel-in-progress: true
 
 jobs:
-  update_blog:
+  backup:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +24,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install feedparser gitpython
+        pip install requests beautifulsoup4
 
-    - name: Run Velog Sync Script
+    - name: Run Velog Backup Script
       run: python scripts/update_blog.py
 
     - name: Commit and Push
@@ -41,8 +41,7 @@ jobs:
           exit 0
         fi
 
-        git commit -m "Auto update velog"
+        git commit -m "Auto backup velog posts"
 
-        # 브랜치 이름 확인 (main 기준)
         git pull --rebase origin main
         git push
