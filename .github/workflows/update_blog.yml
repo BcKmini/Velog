@@ -5,7 +5,6 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 
-# 👉 동시에 여러 액션 실행 방지 (핵심)
 concurrency:
   group: velog-sync
   cancel-in-progress: true
@@ -16,10 +15,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GH_PAT }}
-        fetch-depth: 0
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -47,7 +43,6 @@ jobs:
 
         git commit -m "Auto update velog + README"
 
-        # 👉 최대 3번 재시도
         for i in 1 2 3
         do
           echo "Attempt $i"
