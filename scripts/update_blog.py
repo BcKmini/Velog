@@ -17,6 +17,7 @@ feed = feedparser.parse(rss_url)
 
 os.makedirs(base_dir, exist_ok=True)
 
+# 인덱스 로드
 if os.path.exists(index_file):
     with open(index_file, 'r', encoding='utf-8') as f:
         post_index = json.load(f)
@@ -74,12 +75,11 @@ def update_readme(feed):
 
     repo.git.add(readme_path)
 
+
 for entry in feed.entries:
     post_id = entry.link
 
-    if post_id in post_index:
-        continue
-
+    # 날짜 처리
     if hasattr(entry, 'published_parsed') and entry.published_parsed:
         dt = datetime(*entry.published_parsed[:6])
     else:
@@ -96,6 +96,13 @@ for entry in feed.entries:
     file_name = f"{date_prefix}_{safe_title}.md"
     file_path = os.path.join(target_dir, file_name)
 
+    if post_id in post_index:
+        if os.path.exists(post_index[post_id]):
+            continue
+        else:
+            print(f"Recovering missing file: {post_id}")
+
+    # 파일 생성
     content = f"""---
 title: "{entry.title}"
 date: {dt.strftime('%Y-%m-%d %H:%M:%S')}
@@ -112,6 +119,7 @@ link: {entry.link}
     repo.git.add(file_path)
     new_posts = True
 
+
 if new_posts:
     update_readme(feed)
 
@@ -120,6 +128,6 @@ if new_posts:
 
     repo.git.add(index_file)
 
-    print("New posts added.")
+    print("New posts or recovered posts added.")
 else:
     print("No new posts.")
