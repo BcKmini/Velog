@@ -17,7 +17,6 @@ feed = feedparser.parse(rss_url)
 
 os.makedirs(base_dir, exist_ok=True)
 
-# 인덱스 로드
 if os.path.exists(index_file):
     with open(index_file, 'r', encoding='utf-8') as f:
         post_index = json.load(f)
@@ -113,18 +112,17 @@ link: {entry.link}
     repo.git.add(file_path)
     new_posts = True
 
-# 커밋 처리
 if new_posts:
-    # README 업데이트
     update_readme(feed)
 
-    # 인덱스 저장
     with open(index_file, 'w', encoding='utf-8') as f:
         json.dump(post_index, f, indent=2, ensure_ascii=False)
 
     repo.git.add(index_file)
 
-    repo.git.commit('-m', f'Auto sync velog posts ({datetime.now().strftime("%Y-%m-%d %H:%M")})')
-    repo.git.push()
+    repo.git.commit(
+        '-m',
+        f'Auto sync velog posts ({datetime.now().strftime("%Y-%m-%d %H:%M")})'
+    )
 else:
     print("No new posts.")
