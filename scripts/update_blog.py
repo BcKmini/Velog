@@ -1,133 +1,150 @@
-import feedparser
-import git
+import requests
 import os
-import json
 import re
+import json
 from datetime import datetime
+from bs4 import BeautifulSoup
 
-rss_url = 'https://api.velog.io/rss/@mi_nini'
-repo_path = '.'
+USERNAME = "mi_nini"
+BASE_DIR = "velog-posts"
 
-base_dir = os.path.join(repo_path, 'velog-posts')
-index_file = os.path.join(base_dir, 'post_index.json')
-readme_path = os.path.join(repo_path, 'README.md')
+os.makedirs(BASE_DIR, exist_ok=True)
 
-repo = git.Repo(repo_path)
-feed = feedparser.parse(rss_url)
+# ---------------------------
+# 1. Velog GraphQL로 전체 글 가져오기
+# ---------------------------
+def get_posts():
+    url = "https://v2.velog.io/graphql"
 
-os.makedirs(base_dir, exist_ok=True)
+    query = """
+    query Posts($username: String!) {
+      posts(username: $username) {
+        id
+        title
+        short_description
+        released_at
+        url_slug
+      }
+    }
+    """
 
-# 인덱스 로드
-if os.path.exists(index_file):
-    with open(index_file, 'r', encoding='utf-8') as f:
-        post_index = json.load(f)
-else:
-    post_index = {}
+    res = requests.post(url, json={
+        "query": query,
+        "variables": {"username": USERNAME}
+    })
 
-new_posts = False
-
-def sanitize_filename(name):
-    name = re.sub(r'[\\/*?:"<>|]', '-', name)
-    return name.strip()
-
-def update_readme(feed):
-    if not os.path.exists(readme_path):
-        return
-
-    posts = feed.entries[:3]
-
-    new_content = ""
-    for post in posts:
-        title = post.title
-        link = post.link
-
-        if hasattr(post, 'published_parsed') and post.published_parsed:
-            dt = datetime(*post.published_parsed[:6])
-            date_str = dt.strftime('%Y-%m-%d')
-        else:
-            date_str = "unknown"
-
-        new_content += f"- [{title}]({link}) ({date_str})\n"
-
-    new_content += f"\n[Velog에서 더 보기](https://velog.io/@mi_nini)\n"
-
-    with open(readme_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    start_tag = "<!-- BLOG-POST-LIST:START -->"
-    end_tag = "<!-- BLOG-POST-LIST:END -->"
-
-    start = content.find(start_tag)
-    end = content.find(end_tag)
-
-    if start == -1 or end == -1:
-        print("README tag not found")
-        return
-
-    updated = (
-        content[:start + len(start_tag)] +
-        "\n" + new_content +
-        content[end:]
-    )
-
-    with open(readme_path, 'w', encoding='utf-8') as f:
-        f.write(updated)
-
-    repo.git.add(readme_path)
+    return res.json()["data"]["posts"]
 
 
-for entry in feed.entries:
-    post_id = entry.link
+# ---------------------------
+# 2. 개별 글 상세 가져오기
+# ---------------------------
+def get_post_detail(url_slug):
+    url = "https://v2.velog.io/graphql"
 
-    # 날짜 처리
-    if hasattr(entry, 'published_parsed') and entry.published_parsed:
-        dt = datetime(*entry.published_parsed[:6])
-    else:
-        dt = datetime.now()
+    query = """
+    query Post($username: String!, $url_slug: String!) {
+      post(username: $username, url_slug: $url_slug) {
+        title
+        released_at
+        body
+      }
+    }
+    """
 
-    year = str(dt.year)
-    month = str(dt.month).zfill(2)
-    date_prefix = dt.strftime('%Y-%m-%d')
+    res = requests.post(url, json={
+        "query": query,
+        "variables": {
+            "username": USERNAME,
+            "url_slug": url_slug
+        }
+    })
 
-    target_dir = os.path.join(base_dir, year, month)
-    os.makedirs(target_dir, exist_ok=True)
+    return res.json()["data"]["post"]
 
-    safe_title = sanitize_filename(entry.title)
-    file_name = f"{date_prefix}_{safe_title}.md"
-    file_path = os.path.join(target_dir, file_name)
 
-    if post_id in post_index:
-        if os.path.exists(post_index[post_id]):
+# ---------------------------
+# 3. 이미지 다운로드
+# ---------------------------
+def download_images(html, img_dir):
+    soup = BeautifulSoup(html, "html.parser")
+
+    for img in soup.find_all("img"):
+        src = img.get("src")
+        if not src:
             continue
-        else:
-            print(f"Recovering missing file: {post_id}")
 
-    # 파일 생성
-    content = f"""---
-title: "{entry.title}"
-date: {dt.strftime('%Y-%m-%d %H:%M:%S')}
-link: {entry.link}
+        try:
+            filename = src.split("/")[-1].split("?")[0]
+            filepath = os.path.join(img_dir, filename)
+
+            if not os.path.exists(filepath):
+                img_data = requests.get(src).content
+                with open(filepath, "wb") as f:
+                    f.write(img_data)
+
+            # 👉 경로 로컬로 치환
+            img["src"] = f"./images/{filename}"
+
+        except Exception as e:
+            print("Image download failed:", e)
+
+    return str(soup)
+
+
+# ---------------------------
+# 4. 파일명 정리
+# ---------------------------
+def sanitize(text):
+    return re.sub(r'[\\/*?:"<>|]', '-', text)
+
+
+# ---------------------------
+# 5. 전체 실행
+# ---------------------------
+def main():
+    posts = get_posts()
+
+    for post in posts:
+        slug = post["url_slug"]
+        detail = get_post_detail(slug)
+
+        title = detail["title"]
+        body = detail["body"]
+        date = datetime.fromisoformat(detail["released_at"].replace("Z", ""))
+
+        year = str(date.year)
+        month = str(date.month).zfill(2)
+        date_prefix = date.strftime("%Y-%m-%d")
+
+        # 폴더 생성
+        post_dir = os.path.join(BASE_DIR, year, month)
+        os.makedirs(post_dir, exist_ok=True)
+
+        safe_title = sanitize(title)
+        file_name = f"{date_prefix}_{safe_title}.md"
+        file_path = os.path.join(post_dir, file_name)
+
+        # 이미지 폴더
+        img_dir = os.path.join(post_dir, "images")
+        os.makedirs(img_dir, exist_ok=True)
+
+        # 이미지 다운로드 + HTML 수정
+        body = download_images(body, img_dir)
+
+        markdown = f"""---
+title: "{title}"
+date: {date.strftime('%Y-%m-%d %H:%M:%S')}
 ---
 
-{entry.description}
+{body}
 """
 
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(content)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(markdown)
 
-    post_index[post_id] = file_path
-    repo.git.add(file_path)
-    new_posts = True
+        print(f"Saved: {file_name}")
 
 
-if new_posts:
-    update_readme(feed)
-
-    with open(index_file, 'w', encoding='utf-8') as f:
-        json.dump(post_index, f, indent=2, ensure_ascii=False)
-
-    repo.git.add(index_file)
-
-    print("New posts or recovered posts added.")
-else:
-    print("No new posts.")
+if __name__ == "__main__":
+    main()
