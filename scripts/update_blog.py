@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 from bs4 import BeautifulSoup
 import time
+import html2text
 
 USERNAME = "mi_nini"
 GRAPHQL_URL = "https://v2.velog.io/graphql"
@@ -17,6 +18,16 @@ os.makedirs(posts_dir, exist_ok=True)
 
 repo = git.Repo(repo_path)
 
+# ---------------------------
+# html2text 설정
+# ---------------------------
+h = html2text.HTML2Text()
+h.ignore_links = False       # 링크 유지
+h.ignore_images = False      # 이미지 유지
+h.body_width = 0             # 줄바꿈 강제 없음
+h.ignore_tables = False      # 테이블 유지
+h.mark_code = True           # 코드블록 유지
+
 
 # ---------------------------
 # 1. GraphQL로 전체 글 목록 가져오기
@@ -26,7 +37,6 @@ def get_all_posts():
     cursor = None
 
     while True:
-        # cursor 없을 때와 있을 때 쿼리 분리
         if cursor:
             query = """
             query {
@@ -77,7 +87,6 @@ def get_all_posts():
         if not posts:
             break
 
-        # 공개 글만 필터
         public_posts = [p for p in posts if not p.get("is_private", False)]
         all_posts.extend(public_posts)
         cursor = posts[-1]["id"]
@@ -89,20 +98,19 @@ def get_all_posts():
 
 
 # ---------------------------
-# 2. RSS에서 최근 20개 본문 가져오기 (빠름)
+# 2. RSS 본문 가져오기 (HTML → Markdown 변환)
 # ---------------------------
 def get_rss_bodies():
     feed = feedparser.parse(f'https://api.velog.io/rss/@{USERNAME}')
     bodies = {}
     for entry in feed.entries:
-        soup = BeautifulSoup(entry.description, "html.parser")
-        bodies[entry.link] = soup.get_text(separator="\n").strip()
+        bodies[entry.link] = h.handle(entry.description).strip()
     print(f"RSS bodies loaded: {len(bodies)}")
     return bodies
 
 
 # ---------------------------
-# 3. 글 본문 직접 스크래핑 (RSS에 없는 오래된 글)
+# 3. 오래된 글 스크래핑 (HTML → Markdown 변환)
 # ---------------------------
 def scrape_body(url):
     try:
@@ -111,14 +119,16 @@ def scrape_body(url):
         res.raise_for_status()
         soup = BeautifulSoup(res.text, "html.parser")
 
-        # Velog 본문 셀렉터 여러 개 시도
         body = (
             soup.select_one("div.sc-dAlyuH") or
             soup.select_one("div[class*='MarkdownRender']") or
             soup.select_one("div[class*='atom-one']") or
             soup.select_one("article")
         )
-        return body.get_text(separator="\n").strip() if body else None
+
+        if body:
+            return h.handle(str(body)).strip()
+        return None
     except Exception as e:
         print(f"Scrape failed ({url}): {e}")
         return None
@@ -135,10 +145,8 @@ def sanitize(text):
 # 5. 메인 로직
 # ---------------------------
 def main():
-    # GraphQL로 전체 글 목록 시도
     posts = get_all_posts()
 
-    # GraphQL 실패 시 RSS fallback
     if not posts:
         print("GraphQL failed. Falling back to RSS only (20 posts)...")
         feed = feedparser.parse(f'https://api.velog.io/rss/@{USERNAME}')
@@ -153,7 +161,7 @@ def main():
                 "released_at": date.isoformat() + "Z",
                 "is_private": False,
                 "_link": entry.link,
-                "_body": BeautifulSoup(entry.description, "html.parser").get_text(separator="\n").strip()
+                "_body": h.handle(entry.description).strip()
             })
 
     print(f"\nTotal posts: {len(posts)}")
@@ -162,7 +170,6 @@ def main():
         print("No posts fetched. Exiting.")
         return
 
-    # RSS 본문 미리 로드 (속도 최적화)
     rss_bodies = get_rss_bodies()
 
     changed = False
