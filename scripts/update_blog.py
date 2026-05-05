@@ -1,143 +1,72 @@
-import requests
+import feedparser
+import git
 import os
 import re
 from datetime import datetime
-import time
-import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
 USERNAME = "mi_nini"
+rss_url = f'https://api.velog.io/rss/@{USERNAME}'
+
+repo_path = '.'
 BASE_DIR = "velog-posts"
-RSS_URL = f"https://v2.velog.io/rss/@mi_nini"
+posts_dir = os.path.join(repo_path, BASE_DIR)
+os.makedirs(posts_dir, exist_ok=True)
 
-os.makedirs(BASE_DIR, exist_ok=True)
-
-
-# ---------------------------
-# 1. RSS로 전체 글 목록 가져오기
-# ---------------------------
-def get_all_posts():
-    try:
-        res = requests.get(RSS_URL, timeout=15)
-        res.raise_for_status()
-        print(f"RSS status: {res.status_code}")
-        print(f"RSS content preview: {res.text[:500]}")
-    except Exception as e:
-        print(f"RSS fetch failed: {e}")
-        return []
-
-    try:
-        root = ET.fromstring(res.content)
-    except Exception as e:
-        print(f"XML parse failed: {e}")
-        return []
-
-    channel = root.find("channel")
-    if channel is None:
-        print("No channel found in RSS")
-        return []
-
-    posts = []
-    for item in channel.findall("item"):
-        title = item.findtext("title", "").strip()
-        link = item.findtext("link", "").strip()
-        pub_date = item.findtext("pubDate", "").strip()
-
-        if not link:
-            continue
-
-        posts.append({
-            "title": title,
-            "link": link,
-            "pub_date": pub_date,
-        })
-
-    print(f"Total posts from RSS: {len(posts)}")
-    return posts
+repo = git.Repo(repo_path)
 
 
 # ---------------------------
-# 2. 글 상세 내용 스크래핑
-# ---------------------------
-def get_post_body(url):
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
-        res = requests.get(url, headers=headers, timeout=15)
-        res.raise_for_status()
-    except Exception as e:
-        print(f"Fetch failed for {url}: {e}")
-        return None
-
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    # Velog 본문 셀렉터
-    body = soup.select_one("div.sc-dAlyuH") or \
-           soup.select_one("div[class*='atom-one']") or \
-           soup.select_one("div.velog-markdown-body") or \
-           soup.select_one("div[class*='MarkdownRender']") or \
-           soup.select_one("article")
-
-    if body:
-        return body.get_text(separator="\n").strip()
-
-    print(f"Body not found for {url}")
-    return None
-
-
-# ---------------------------
-# 3. 파일명 정리
+# 1. 파일명 정리
 # ---------------------------
 def sanitize(text):
     return re.sub(r'[\\/*?:"<>|]', '-', text)
 
 
 # ---------------------------
-# 4. 날짜 파싱
+# 2. 날짜 파싱
 # ---------------------------
-def parse_date(pub_date_str):
-    # RSS pubDate 형식: "Mon, 01 Jan 2024 00:00:00 GMT"
+def parse_date(entry):
     try:
-        return datetime.strptime(pub_date_str, "%a, %d %b %Y %H:%M:%S %Z")
+        return datetime(*entry.published_parsed[:6])
     except:
-        pass
-    try:
-        return datetime.strptime(pub_date_str, "%a, %d %b %Y %H:%M:%S +0000")
-    except:
-        pass
-    return datetime.now()
+        return datetime.now()
 
 
 # ---------------------------
-# 5. 메인 로직
+# 3. 메인 로직
 # ---------------------------
 def main():
-    posts = get_all_posts()
+    feed = feedparser.parse(rss_url)
+    print(f"RSS URL: {rss_url}")
+    print(f"Total posts: {len(feed.entries)}")
 
-    if not posts:
+    if not feed.entries:
         print("No posts fetched. Exiting.")
         return
 
-    for post in posts:
-        title = post["title"]
-        link = post["link"]
-        pub_date = post["pub_date"]
+    changed = False
 
-        date = parse_date(pub_date)
+    for entry in feed.entries:
+        title = entry.title
+        link = entry.link
+        date = parse_date(entry)
 
         year = str(date.year)
         month = str(date.month).zfill(2)
 
-        post_dir = os.path.join(BASE_DIR, year, month)
+        # 연도/월 폴더 구분
+        post_dir = os.path.join(posts_dir, year, month)
         os.makedirs(post_dir, exist_ok=True)
 
         safe_title = sanitize(title)
         file_name = f"{date.strftime('%Y-%m-%d')}_{safe_title}.md"
         file_path = os.path.join(post_dir, file_name)
 
-        # 본문 가져오기
-        body = get_post_body(link)
+        # HTML → 텍스트 변환
+        soup = BeautifulSoup(entry.description, "html.parser")
+        body = soup.get_text(separator="\n").strip()
+
         if not body:
             print(f"Skip (no body): {title}")
             continue
@@ -165,7 +94,15 @@ source: "{link}"
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(new_content)
 
-        time.sleep(1)  # 스크래핑 간격
+        repo.git.add(file_path)
+        repo.git.commit('-m', f'Add/Update post: {title}')
+        changed = True
+
+    if changed:
+        repo.git.push()
+        print("Pushed to GitHub.")
+    else:
+        print("No changes to push.")
 
 
 if __name__ == "__main__":
