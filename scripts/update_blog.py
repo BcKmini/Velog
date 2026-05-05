@@ -9,9 +9,6 @@ BASE_DIR = "velog-posts"
 
 os.makedirs(BASE_DIR, exist_ok=True)
 
-# ---------------------------
-# 1. 전체 글 가져오기 (cursor 방식으로 변경)
-# ---------------------------
 def get_all_posts():
     url = "https://v2.velog.io/graphql"
     all_posts = []
@@ -49,7 +46,6 @@ def get_all_posts():
             print(f"Request failed: {e}")
             break
 
-        # 응답 구조 확인용 디버깅
         if "errors" in json_res:
             print(f"GraphQL errors: {json_res['errors']}")
             break
@@ -64,8 +60,6 @@ def get_all_posts():
             break
 
         all_posts.extend(posts)
-
-        # 다음 페이지 cursor = 마지막 글의 id
         cursor = posts[-1]["id"]
 
         print(f"Loaded {len(all_posts)} posts...")
@@ -74,9 +68,6 @@ def get_all_posts():
     return all_posts
 
 
-# ---------------------------
-# 2. 글 상세 가져오기
-# ---------------------------
 def get_post_detail(slug):
     url = "https://v2.velog.io/graphql"
 
@@ -85,6 +76,7 @@ def get_post_detail(slug):
       post(username: $username, url_slug: $url_slug) {
         title
         released_at
+        updated_at
         body
       }
     }
@@ -119,16 +111,10 @@ def get_post_detail(slug):
     return json_res["data"].get("post")
 
 
-# ---------------------------
-# 3. 파일명 정리
-# ---------------------------
 def sanitize(text):
     return re.sub(r'[\\/*?:"<>|]', '-', text)
 
 
-# ---------------------------
-# 4. 메인 로직
-# ---------------------------
 def main():
     posts = get_all_posts()
 
@@ -153,11 +139,17 @@ def main():
         date = datetime.fromisoformat(
             detail["released_at"].replace("Z", "+00:00")
         )
+        updated_at = detail.get("updated_at")
+        if updated_at:
+            updated_date = datetime.fromisoformat(
+                updated_at.replace("Z", "+00:00")
+            )
+        else:
+            updated_date = date
 
         year = str(date.year)
         month = str(date.month).zfill(2)
 
-        # 폴더 생성
         post_dir = os.path.join(BASE_DIR, year, month)
         os.makedirs(post_dir, exist_ok=True)
 
@@ -165,23 +157,30 @@ def main():
         file_name = f"{date.strftime('%Y-%m-%d')}_{safe_title}.md"
         file_path = os.path.join(post_dir, file_name)
 
-        # 이미 있으면 skip
-        if os.path.exists(file_path):
-            print(f"Already exists, skip: {file_name}")
-            continue
-
-        markdown = f"""---
+        new_content = f"""---
 title: "{title}"
 date: {date.strftime('%Y-%m-%d %H:%M:%S')}
+updated: {updated_date.strftime('%Y-%m-%d %H:%M:%S')}
 ---
 
 {body}
 """
 
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(markdown)
+        # 파일이 없거나 내용이 다르면 저장 (수정된 글도 반영)
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                existing = f.read()
+            if existing == new_content:
+                print(f"No change, skip: {file_name}")
+                continue
+            else:
+                print(f"Updated: {file_name}")
+        else:
+            print(f"New post: {file_name}")
 
-        print(f"Saved: {file_name}")
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+
         time.sleep(0.2)
 
 
