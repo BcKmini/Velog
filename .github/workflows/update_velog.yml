@@ -23,7 +23,7 @@ jobs:
         python-version: '3.x'
 
     - name: Install dependencies
-      run: pip install requests feedparser gitpython beautifulsoup4
+      run: pip install feedparser gitpython beautifulsoup4 requests
 
     - name: Set git config
       run: |
