@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import time
 
 USERNAME = "mi_nini"
+GRAPHQL_URL = "https://v2.velog.io/graphql"
 
 repo_path = '.'
 BASE_DIR = "velog-posts"
@@ -16,96 +17,111 @@ os.makedirs(posts_dir, exist_ok=True)
 
 repo = git.Repo(repo_path)
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-}
-
 
 # ---------------------------
-# 1. Velog 프로필 페이지에서 전체 글 목록 스크래핑
+# 1. GraphQL로 전체 글 목록 가져오기
 # ---------------------------
 def get_all_posts():
     all_posts = []
-    page = 1
+    cursor = None
 
     while True:
-        url = f"https://velog.io/@{USERNAME}?page={page}"
-        print(f"Fetching post list page {page}...")
+        # cursor 없을 때와 있을 때 쿼리 분리
+        if cursor:
+            query = """
+            query {
+              posts(username: "%s", cursor: "%s") {
+                id
+                title
+                released_at
+                url_slug
+                is_private
+              }
+            }
+            """ % (USERNAME, cursor)
+        else:
+            query = """
+            query {
+              posts(username: "%s") {
+                id
+                title
+                released_at
+                url_slug
+                is_private
+              }
+            }
+            """ % USERNAME
 
         try:
-            res = requests.get(url, headers=HEADERS, timeout=15)
-            res.raise_for_status()
+            res = requests.post(
+                GRAPHQL_URL,
+                json={"query": query},
+                headers={"Content-Type": "application/json"},
+                timeout=15
+            )
+            print(f"GraphQL status: {res.status_code}")
+            json_res = res.json()
         except Exception as e:
-            print(f"Failed: {e}")
+            print(f"Request failed: {e}")
             break
 
-        soup = BeautifulSoup(res.text, "html.parser")
-
-        # 글 카드 셀렉터
-        cards = soup.select("div.FlatPostCard_block__a1YEv") or \
-                soup.select("div[class*='FlatPostCard']") or \
-                soup.select("div[class*='PostCard']")
-
-        if not cards:
-            print(f"No cards found at page {page}. Done.")
+        if "errors" in json_res:
+            print(f"GraphQL errors: {json_res['errors']}")
             break
 
-        for card in cards:
-            a_tag = card.select_one("a")
-            title_tag = card.select_one("h2") or card.select_one("h4")
-            date_tag = card.select_one("span.date") or card.select_one("span[class*='date']")
+        if "data" not in json_res or not json_res["data"]:
+            print(f"Unexpected response: {json_res}")
+            break
 
-            if not a_tag:
-                continue
+        posts = json_res["data"].get("posts", [])
+        if not posts:
+            break
 
-            link = "https://velog.io" + a_tag["href"] if a_tag["href"].startswith("/") else a_tag["href"]
-            title = title_tag.get_text(strip=True) if title_tag else link.split("/")[-1]
-            date_str = date_tag.get_text(strip=True) if date_tag else ""
+        # 공개 글만 필터
+        public_posts = [p for p in posts if not p.get("is_private", False)]
+        all_posts.extend(public_posts)
+        cursor = posts[-1]["id"]
 
-            all_posts.append({
-                "title": title,
-                "link": link,
-                "date_str": date_str,
-            })
-
-        print(f"Loaded {len(all_posts)} posts so far...")
-        page += 1
+        print(f"Loaded {len(all_posts)} posts (cursor: {cursor[:8]}...)")
         time.sleep(0.5)
 
     return all_posts
 
 
 # ---------------------------
-# 2. 글 본문 스크래핑
+# 2. RSS에서 최근 20개 본문 가져오기 (빠름)
 # ---------------------------
-def get_post_body(url):
+def get_rss_bodies():
+    feed = feedparser.parse(f'https://api.velog.io/rss/@{USERNAME}')
+    bodies = {}
+    for entry in feed.entries:
+        soup = BeautifulSoup(entry.description, "html.parser")
+        bodies[entry.link] = soup.get_text(separator="\n").strip()
+    print(f"RSS bodies loaded: {len(bodies)}")
+    return bodies
+
+
+# ---------------------------
+# 3. 글 본문 직접 스크래핑 (RSS에 없는 오래된 글)
+# ---------------------------
+def scrape_body(url):
     try:
-        res = requests.get(url, headers=HEADERS, timeout=15)
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=15)
         res.raise_for_status()
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        # Velog 본문 셀렉터 여러 개 시도
+        body = (
+            soup.select_one("div.sc-dAlyuH") or
+            soup.select_one("div[class*='MarkdownRender']") or
+            soup.select_one("div[class*='atom-one']") or
+            soup.select_one("article")
+        )
+        return body.get_text(separator="\n").strip() if body else None
     except Exception as e:
-        print(f"Fetch failed: {e}")
+        print(f"Scrape failed ({url}): {e}")
         return None
-
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    body = soup.select_one("div.sc-dAlyuH") or \
-           soup.select_one("div[class*='MarkdownRender']") or \
-           soup.select_one("div[class*='atom-one']") or \
-           soup.select_one("article")
-
-    return body.get_text(separator="\n").strip() if body else None
-
-
-# ---------------------------
-# 3. 날짜 파싱
-# ---------------------------
-def parse_date(date_str):
-    for fmt in ["%Y-%m-%d", "%B %d, %Y", "%Y년 %m월 %d일"]:
-        try:
-            return datetime.strptime(date_str, fmt)
-        except:
-            pass
-    return datetime.now()
 
 
 # ---------------------------
@@ -119,33 +135,49 @@ def sanitize(text):
 # 5. 메인 로직
 # ---------------------------
 def main():
-    # RSS에서 최근 20개 먼저 가져오기 (날짜 정보 정확)
-    rss_entries = {}
-    feed = feedparser.parse(f'https://api.velog.io/rss/@{USERNAME}')
-    for entry in feed.entries:
-        rss_entries[entry.link] = entry
-    print(f"RSS entries loaded: {len(rss_entries)}")
-
-    # 전체 글 목록 스크래핑
+    # GraphQL로 전체 글 목록 시도
     posts = get_all_posts()
-    print(f"\nTotal posts found: {len(posts)}")
+
+    # GraphQL 실패 시 RSS fallback
+    if not posts:
+        print("GraphQL failed. Falling back to RSS only (20 posts)...")
+        feed = feedparser.parse(f'https://api.velog.io/rss/@{USERNAME}')
+        for entry in feed.entries:
+            try:
+                date = datetime(*entry.published_parsed[:6])
+            except:
+                date = datetime.now()
+            posts.append({
+                "title": entry.title,
+                "url_slug": entry.link.split("/")[-1],
+                "released_at": date.isoformat() + "Z",
+                "is_private": False,
+                "_link": entry.link,
+                "_body": BeautifulSoup(entry.description, "html.parser").get_text(separator="\n").strip()
+            })
+
+    print(f"\nTotal posts: {len(posts)}")
 
     if not posts:
         print("No posts fetched. Exiting.")
         return
 
+    # RSS 본문 미리 로드 (속도 최적화)
+    rss_bodies = get_rss_bodies()
+
     changed = False
 
     for post in posts:
         title = post["title"]
-        link = post["link"]
+        slug = post.get("url_slug", "")
+        link = post.get("_link") or f"https://velog.io/@{USERNAME}/{slug}"
 
-        # RSS에 있으면 RSS 날짜 사용, 없으면 스크래핑 날짜 사용
-        if link in rss_entries:
-            entry = rss_entries[link]
-            date = datetime(*entry.published_parsed[:6])
-        else:
-            date = parse_date(post["date_str"])
+        try:
+            date = datetime.fromisoformat(
+                post["released_at"].replace("Z", "+00:00")
+            )
+        except:
+            date = datetime.now()
 
         year = str(date.year)
         month = str(date.month).zfill(2)
@@ -157,8 +189,9 @@ def main():
         file_name = f"{date.strftime('%Y-%m-%d')}_{safe_title}.md"
         file_path = os.path.join(post_dir, file_name)
 
-        # 본문 가져오기
-        body = get_post_body(link)
+        # 본문: RSS → 스크래핑 순으로 시도
+        body = post.get("_body") or rss_bodies.get(link) or scrape_body(link)
+
         if not body:
             print(f"Skip (no body): {title}")
             continue
@@ -190,7 +223,7 @@ source: "{link}"
         repo.git.commit('-m', f'Add/Update post: {title}')
         changed = True
 
-        time.sleep(1)  # 스크래핑 간격
+        time.sleep(0.5)
 
     if changed:
         repo.git.push()
