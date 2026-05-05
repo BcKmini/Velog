@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 USERNAME = "mi_nini"
 BASE_DIR = "velog-posts"
-RSS_URL = f"https://v2.velog.io/rss/{USERNAME}"
+RSS_URL = f"https://v2.velog.io/rss/mi_nini"
 
 os.makedirs(BASE_DIR, exist_ok=True)
 
