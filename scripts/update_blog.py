@@ -2,7 +2,6 @@ import requests
 import os
 import re
 from datetime import datetime
-from bs4 import BeautifulSoup
 import time
 
 USERNAME = "mi_nini"
@@ -11,18 +10,18 @@ BASE_DIR = "velog-posts"
 os.makedirs(BASE_DIR, exist_ok=True)
 
 # ---------------------------
-# 1. 전체 글 가져오기 (skip 방식)
+# 1. 전체 글 가져오기 (cursor 방식으로 변경)
 # ---------------------------
 def get_all_posts():
     url = "https://v2.velog.io/graphql"
     all_posts = []
-    skip = 0
+    cursor = None
     LIMIT = 20
 
     while True:
         query = """
-        query Posts($username: String!, $limit: Int!, $skip: Int!) {
-          posts(username: $username, limit: $limit, skip: $skip) {
+        query Posts($username: String!, $limit: Int!, $cursor: String) {
+          posts(username: $username, limit: $limit, cursor: $cursor) {
             id
             title
             released_at
@@ -31,25 +30,46 @@ def get_all_posts():
         }
         """
 
-        res = requests.post(url, json={
-            "query": query,
-            "variables": {
-                "username": USERNAME,
-                "limit": LIMIT,
-                "skip": skip
-            }
-        }).json()
+        variables = {
+            "username": USERNAME,
+            "limit": LIMIT,
+        }
+        if cursor:
+            variables["cursor"] = cursor
 
-        posts = res["data"]["posts"]
+        try:
+            res = requests.post(
+                url,
+                json={"query": query, "variables": variables},
+                timeout=15
+            )
+            res.raise_for_status()
+            json_res = res.json()
+        except Exception as e:
+            print(f"Request failed: {e}")
+            break
+
+        # 응답 구조 확인용 디버깅
+        if "errors" in json_res:
+            print(f"GraphQL errors: {json_res['errors']}")
+            break
+
+        if "data" not in json_res or json_res["data"] is None:
+            print(f"Unexpected response: {json_res}")
+            break
+
+        posts = json_res["data"].get("posts", [])
 
         if not posts:
             break
 
         all_posts.extend(posts)
-        skip += LIMIT
+
+        # 다음 페이지 cursor = 마지막 글의 id
+        cursor = posts[-1]["id"]
 
         print(f"Loaded {len(all_posts)} posts...")
-        time.sleep(0.3)  # rate limit 방지
+        time.sleep(0.3)
 
     return all_posts
 
@@ -70,15 +90,33 @@ def get_post_detail(slug):
     }
     """
 
-    res = requests.post(url, json={
-        "query": query,
-        "variables": {
-            "username": USERNAME,
-            "url_slug": slug
-        }
-    }).json()
+    try:
+        res = requests.post(
+            url,
+            json={
+                "query": query,
+                "variables": {
+                    "username": USERNAME,
+                    "url_slug": slug
+                }
+            },
+            timeout=15
+        )
+        res.raise_for_status()
+        json_res = res.json()
+    except Exception as e:
+        print(f"Request failed for {slug}: {e}")
+        return None
 
-    return res["data"]["post"]
+    if "errors" in json_res:
+        print(f"GraphQL errors for {slug}: {json_res['errors']}")
+        return None
+
+    if "data" not in json_res or json_res["data"] is None:
+        print(f"Unexpected response for {slug}: {json_res}")
+        return None
+
+    return json_res["data"].get("post")
 
 
 # ---------------------------
@@ -89,81 +127,48 @@ def sanitize(text):
 
 
 # ---------------------------
-# 4. 이미지 다운로드 + 경로 변경
-# ---------------------------
-def process_images(html, img_dir):
-    soup = BeautifulSoup(html, "html.parser")
-
-    for img in soup.find_all("img"):
-        src = img.get("src")
-        if not src:
-            continue
-
-        try:
-            filename = src.split("/")[-1].split("?")[0]
-            filepath = os.path.join(img_dir, filename)
-
-            # 이미 있으면 다운로드 안 함 (최적화)
-            if not os.path.exists(filepath):
-                img_data = requests.get(src, timeout=10).content
-                with open(filepath, "wb") as f:
-                    f.write(img_data)
-
-            img["src"] = f"./images/{filename}"
-
-        except Exception as e:
-            print("Image error:", e)
-
-    return str(soup)
-
-
-# ---------------------------
-# 5. 메인 로직
+# 4. 메인 로직
 # ---------------------------
 def main():
     posts = get_all_posts()
 
+    if not posts:
+        print("No posts fetched. Exiting.")
+        return
+
+    print(f"Total posts: {len(posts)}")
+
     for post in posts:
         slug = post["url_slug"]
 
-        try:
-            detail = get_post_detail(slug)
-        except:
-            print(f"Skip (detail fail): {slug}")
-            continue
+        detail = get_post_detail(slug)
 
-        if not detail:
+        if not detail or not detail.get("body"):
+            print(f"Skip (no detail): {slug}")
             continue
 
         title = detail["title"]
         body = detail["body"]
 
         date = datetime.fromisoformat(
-            detail["released_at"].replace("Z", "")
+            detail["released_at"].replace("Z", "+00:00")
         )
 
         year = str(date.year)
         month = str(date.month).zfill(2)
-        date_prefix = date.strftime("%Y-%m-%d")
 
         # 폴더 생성
         post_dir = os.path.join(BASE_DIR, year, month)
         os.makedirs(post_dir, exist_ok=True)
 
         safe_title = sanitize(title)
-        file_name = f"{date_prefix}_{safe_title}.md"
+        file_name = f"{date.strftime('%Y-%m-%d')}_{safe_title}.md"
         file_path = os.path.join(post_dir, file_name)
 
-        # 이미 있으면 skip (속도 최적화)
+        # 이미 있으면 skip
         if os.path.exists(file_path):
+            print(f"Already exists, skip: {file_name}")
             continue
-
-        # 이미지 폴더
-        img_dir = os.path.join(post_dir, "images")
-        os.makedirs(img_dir, exist_ok=True)
-
-        # 이미지 처리
-        body = process_images(body, img_dir)
 
         markdown = f"""---
 title: "{title}"
@@ -177,6 +182,7 @@ date: {date.strftime('%Y-%m-%d %H:%M:%S')}
             f.write(markdown)
 
         print(f"Saved: {file_name}")
+        time.sleep(0.2)
 
 
 if __name__ == "__main__":
