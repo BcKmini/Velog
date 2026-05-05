@@ -1,12 +1,15 @@
 import feedparser
+import requests
 import git
 import os
 import re
 from datetime import datetime
 from bs4 import BeautifulSoup
+import time
 
 USERNAME = "mi_nini"
 rss_url = f'https://api.velog.io/rss/@{USERNAME}'
+GRAPHQL_URL = "https://v2.velog.io/graphql"
 
 repo_path = '.'
 BASE_DIR = "velog-posts"
@@ -17,45 +20,122 @@ repo = git.Repo(repo_path)
 
 
 # ---------------------------
-# 1. 파일명 정리
+# 1. GraphQL로 전체 글 목록 가져오기
+# ---------------------------
+def get_all_posts():
+    all_posts = []
+    cursor = None
+
+    while True:
+        query = """
+        query Posts($username: String!, $cursor: String) {
+          posts(username: $username, cursor: $cursor) {
+            id
+            title
+            released_at
+            url_slug
+            is_private
+          }
+        }
+        """
+        variables = {"username": USERNAME}
+        if cursor:
+            variables["cursor"] = cursor
+
+        try:
+            res = requests.post(
+                GRAPHQL_URL,
+                json={"query": query, "variables": variables},
+                timeout=15
+            )
+            res.raise_for_status()
+            json_res = res.json()
+        except Exception as e:
+            print(f"Request failed: {e}")
+            break
+
+        if "errors" in json_res:
+            print(f"GraphQL errors: {json_res['errors']}")
+            break
+
+        if "data" not in json_res or json_res["data"] is None:
+            print(f"Unexpected response: {json_res}")
+            break
+
+        posts = json_res["data"].get("posts", [])
+        if not posts:
+            break
+
+        # 임시저장(비공개) 글 제외
+        public_posts = [p for p in posts if not p.get("is_private", False)]
+        all_posts.extend(public_posts)
+        cursor = posts[-1]["id"]
+
+        print(f"Loaded {len(all_posts)} posts...")
+        time.sleep(0.3)
+
+    return all_posts
+
+
+# ---------------------------
+# 2. 글 본문 가져오기 (GraphQL)
+# ---------------------------
+def get_post_body(slug):
+    query = """
+    query Post($username: String!, $url_slug: String!) {
+      post(username: $username, url_slug: $url_slug) {
+        body
+      }
+    }
+    """
+    try:
+        res = requests.post(
+            GRAPHQL_URL,
+            json={
+                "query": query,
+                "variables": {"username": USERNAME, "url_slug": slug}
+            },
+            timeout=15
+        )
+        res.raise_for_status()
+        json_res = res.json()
+        return json_res["data"]["post"]["body"]
+    except Exception as e:
+        print(f"Body fetch failed for {slug}: {e}")
+        return None
+
+
+# ---------------------------
+# 3. 파일명 정리
 # ---------------------------
 def sanitize(text):
     return re.sub(r'[\\/*?:"<>|]', '-', text)
 
 
 # ---------------------------
-# 2. 날짜 파싱
-# ---------------------------
-def parse_date(entry):
-    try:
-        return datetime(*entry.published_parsed[:6])
-    except:
-        return datetime.now()
-
-
-# ---------------------------
-# 3. 메인 로직
+# 4. 메인 로직
 # ---------------------------
 def main():
-    feed = feedparser.parse(rss_url)
-    print(f"RSS URL: {rss_url}")
-    print(f"Total posts: {len(feed.entries)}")
+    posts = get_all_posts()
+    print(f"\nTotal public posts: {len(posts)}")
 
-    if not feed.entries:
+    if not posts:
         print("No posts fetched. Exiting.")
         return
 
     changed = False
 
-    for entry in feed.entries:
-        title = entry.title
-        link = entry.link
-        date = parse_date(entry)
+    for post in posts:
+        title = post["title"]
+        slug = post["url_slug"]
+
+        date = datetime.fromisoformat(
+            post["released_at"].replace("Z", "+00:00")
+        )
 
         year = str(date.year)
         month = str(date.month).zfill(2)
 
-        # 연도/월 폴더 구분
         post_dir = os.path.join(posts_dir, year, month)
         os.makedirs(post_dir, exist_ok=True)
 
@@ -63,13 +143,13 @@ def main():
         file_name = f"{date.strftime('%Y-%m-%d')}_{safe_title}.md"
         file_path = os.path.join(post_dir, file_name)
 
-        # HTML → 텍스트 변환
-        soup = BeautifulSoup(entry.description, "html.parser")
-        body = soup.get_text(separator="\n").strip()
-
+        # 본문 가져오기
+        body = get_post_body(slug)
         if not body:
             print(f"Skip (no body): {title}")
             continue
+
+        link = f"https://velog.io/@{USERNAME}/{slug}"
 
         new_content = f"""---
 title: "{title}"
@@ -97,6 +177,8 @@ source: "{link}"
         repo.git.add(file_path)
         repo.git.commit('-m', f'Add/Update post: {title}')
         changed = True
+
+        time.sleep(0.3)
 
     if changed:
         repo.git.push()
