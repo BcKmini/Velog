@@ -8,13 +8,13 @@ source: "https://velog.io/@mi_nini/CART-Ensumble"
 
 ## 목차
 
-  * [파트 4: CART: 분류 트리 (Classification Tree)](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-4-cart-%EB%B6%84%EB%A5%98-%ED%8A%B8%EB%A6%AC-classification-tree)
-  * [파트 5: CART: 회귀 트리 (Regression Tree)](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-5-cart-%ED%9A%8C%EA%B7%80-%ED%8A%B8%EB%A6%AC-regression-tree)
-  * [파트 6: 모델 일반화 평가 & 교차 검증](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-6-%EB%AA%A8%EB%8D%B8-%EC%9D%BC%EB%B0%98%ED%99%94-%ED%8F%89%EA%B0%80--%EA%B5%90%EC%B0%A8-%EA%B2%80%EC%A6%9D)
-  * [파트 7: Bagging](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-7-bagging)
-  * [파트 8: AdaBoost](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-8-adaboost)
-  * [파트 9: Voting Classifier](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-9-voting-classifier)
-  * [파트 10: Random Forest Regressor](https://api.velog.io/rss/@mi_nini#%ED%8C%8C%ED%8A%B8-10-random-forest-regressor)
+  * 파트 4: CART: 분류 트리 (Classification Tree)
+  * 파트 5: CART: 회귀 트리 (Regression Tree)
+  * 파트 6: 모델 일반화 평가 & 교차 검증
+  * 파트 7: Bagging
+  * 파트 8: AdaBoost
+  * 파트 9: Voting Classifier
+  * 파트 10: Random Forest Regressor
 
 
 
