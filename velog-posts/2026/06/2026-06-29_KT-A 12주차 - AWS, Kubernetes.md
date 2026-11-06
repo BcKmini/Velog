@@ -1,13 +1,12 @@
 ---
 title: "KT-A 12주차 / AWS, Kubernetes"
 date: 2026-06-29 03:06:14
-source: "https://velog.io/@mi_nini/KT-A-12주차-AWS-Kubernetes"
+source: "https://velog.io/@mi_nini/KT-A-12%EC%A3%BC%EC%B0%A8-AWS-Kubernetes"
 ---
 
 ## 들어가며
 
-11주차는 동원예비군 훈련에 참여하면서 미니 프로젝트를 진행하지 못해 곧바로 12주차 학습을 진행하게 되었다. 원래는 이전에 프론트엔드로 구현했던 프로젝트를 Spring을 활용하여 데이터베이스와 연동하고, json-server 기반의 임시 백엔드를 실제 서버 환경으로 대체하는 내용을 다룰 예정이었다. 하지만 일정상 해당 프로젝트를 진행하지 못했기 때문에 이번 글에서는 프로젝트 대신 학습한 내용을 정리하고자 한다.  
-이번 글은 클라우드 환경에서 자주 사용되는 핵심 서비스와 k8s, 그리고 AWS 기반 CI/CD 파이프라인을 중심으로 정리한 학습 기록이다. 
+11주차는 동원예비군 훈련에 참여하면서 미니 프로젝트를 진행하지 못해 곧바로 12주차 학습을 진행하게 되었다. 원래는 이전에 프론트엔드로 구현했던 프로젝트를 Spring을 활용하여 데이터베이스와 연동하고, json-server 기반의 임시 백엔드를 실제 서버 환경으로 대체하는 내용을 다룰 예정이었다. 하지만 일정상 해당 프로젝트를 진행하지 못했기 때문에 이번 글에서는 프로젝트 대신 학습한 내용을 정리하고자 한다. 이번 글은 클라우드 환경에서 자주 사용되는 핵심 서비스와 k8s, 그리고 AWS 기반 CI/CD 파이프라인을 중심으로 정리한 학습 기록이다. 
 
 **다루는 범위:**
 
@@ -29,13 +28,13 @@ source: "https://velog.io/@mi_nini/KT-A-12주차-AWS-Kubernetes"
 
 예전 On-Premise 방식을 생각해보자. 서비스를 운영하려면 서버를 직접 구매해야 했다. 서버는 최대 트래픽 기준으로 사야 했기 때문에, 평소에는 비싼 장비가 놀고 있었다. 반대로 예상치 못한 트래픽 폭증이 오면 서버가 터졌다.
 
-항목| On-Premise| Cloud  
+항목 | On-Premise | Cloud  
 ---|---|---  
-서버 구매| 직접 구매, 설치| 필요할 때 빌림  
-초기 투자 비용| 매우 높음| 거의 없음  
-확장 속도| 수 주 ~ 수 개월| 수 분 이내  
-유지보수| 직접 담당| CSP(클라우드 제공업체) 담당  
-요금 방식| 선불 자본 지출| 종량제 (쓴 만큼 지불)  
+서버 구매 | 직접 구매, 설치 | 필요할 때 빌림  
+초기 투자 비용 | 매우 높음 | 거의 없음  
+확장 속도 | 수 주 ~ 수 개월 | 수 분 이내  
+유지보수 | 직접 담당 | CSP(클라우드 제공업체) 담당  
+요금 방식 | 선불 자본 지출 | 종량제 (쓴 만큼 지불)  
   
 클라우드의 핵심 이점은 세 가지로 요약된다.
 
@@ -47,16 +46,16 @@ source: "https://velog.io/@mi_nini/KT-A-12주차-AWS-Kubernetes"
 
 ### 1.2 AWS vs Azure 비교
 
-구분| AWS (Amazon Web Services)| Microsoft Azure  
+구분 | AWS (Amazon Web Services) | Microsoft Azure  
 ---|---|---  
-출시| 2006년 (클라우드 시장 선두)| 2010년 (후발주자, 빠른 성장)  
-시장 점유율| 1위 (약 30% 이상)| 2위 (약 25% 내외)  
-강점| 광범위한 서비스, 글로벌 인프라| Microsoft 제품 통합 (Windows Server, AD, Office 365)  
-가상 머신| EC2| Azure Virtual Machine  
-스토리지| S3| Blob Storage  
-DB| RDS, DynamoDB| Azure SQL, Cosmos DB  
-AI/ML| SageMaker, Rekognition| Azure AI, Cognitive Services  
-주요 고객층| 스타트업, 기술 기업, 글로벌 서비스| 기존 Microsoft 고객, 공공기관, 대기업  
+출시 | 2006년 (클라우드 시장 선두) | 2010년 (후발주자, 빠른 성장)  
+시장 점유율 | 1위 (약 30% 이상) | 2위 (약 25% 내외)  
+강점 | 광범위한 서비스, 글로벌 인프라 | Microsoft 제품 통합 (Windows Server, AD, Office 365)  
+가상 머신 | EC2 | Azure Virtual Machine  
+스토리지 | S3 | Blob Storage  
+DB | RDS, DynamoDB | Azure SQL, Cosmos DB  
+AI/ML | SageMaker, Rekognition | Azure AI, Cognitive Services  
+주요 고객층 | 스타트업, 기술 기업, 글로벌 서비스 | 기존 Microsoft 고객, 공공기관, 대기업  
   
 ### 1.3 AWS 글로벌 인프라 — 리전, 가용 영역, 엣지
 
@@ -79,11 +78,14 @@ AWS 글로벌 인프라는 리전 → 가용 영역 → 엣지 로케이션의 3
 
 
 
-리전 선택 시 4가지 고려사항:  
-1\. **거버넌스** : 금융, 의료 데이터는 국내 데이터센터에 보관해야 하는 법적 요건이 있음  
-2\. **지연 시간** : 사용자와 가까울수록 응답이 빠름  
-3\. **서비스 가용성** : 모든 AWS 서비스가 모든 리전에 출시되지 않음  
-4\. **비용** : 리전마다 EC2 요금이 다름
+리전 선택 시 4가지 고려사항:
+
+  1. **거버넌스** : 금융, 의료 데이터는 국내 데이터센터에 보관해야 하는 법적 요건이 있음
+  2. **지연 시간** : 사용자와 가까울수록 응답이 빠름
+  3. **서비스 가용성** : 모든 AWS 서비스가 모든 리전에 출시되지 않음
+  4. **비용** : 리전마다 EC2 요금이 다름
+
+
 
 **가용 영역(AZ, Availability Zone)**
 
@@ -119,21 +121,21 @@ AWS 글로벌 인프라는 리전 → 가용 영역 → 엣지 로케이션의 3
 
 기존 앱을 클라우드에 그냥 옮기는 건 **Lift & Shift**(이전·재호스팅). 클라우드 네이티브의 핵심 요소 4가지:
 
-요소| 설명  
+요소 | 설명  
 ---|---  
-**DevOps**|  개발(Dev)과 운영(Ops)의 협업 문화  
-**Container**|  이식 가능한 경량 실행 환경  
-**CI/CD**|  빌드·테스트·배포 자동화 파이프라인  
-**Micro Services (MSA)**|  기능별로 분리된 독립 서비스 구조  
+**DevOps** | 개발(Dev)과 운영(Ops)의 협업 문화  
+**Container** | 이식 가능한 경량 실행 환경  
+**CI/CD** | 빌드·테스트·배포 자동화 파이프라인  
+**Micro Services (MSA)** | 기능별로 분리된 독립 서비스 구조  
   
 ### 2.2 DevOps — 개발팀과 운영팀의 벽을 허물다
 
 DevOps 이전의 전통적인 개발 환경에는 구조적인 충돌이 있었다.
 
-관점| 목표| 갈등 요인  
+관점 | 목표 | 갈등 요인  
 ---|---|---  
-개발팀(Dev)| 기능을 빠르게 배포| 변경이 많을수록 좋음  
-운영팀(Ops)| 시스템 안정성 유지| 변경이 적을수록 좋음  
+개발팀(Dev) | 기능을 빠르게 배포 | 변경이 많을수록 좋음  
+운영팀(Ops) | 시스템 안정성 유지 | 변경이 적을수록 좋음  
   
 이 구조적 갈등으로 배포 주기가 길어지고, 장애 발생 시 책임 소재가 불분명해진다. DevOps는 **자동화와 협업 문화** 를 통해 이 문제를 해결한다.
 
@@ -183,11 +185,11 @@ CI/CD 도입 효과: 배포 주기 단축, 버그 조기 발견, 팀 생산성 �
       CSP 제공: 전부
 [/code]
 
-모델| AWS 대표 서비스| 사용 예시  
+모델 | AWS 대표 서비스 | 사용 예시  
 ---|---|---  
-IaaS| EC2, VPC, S3| 가상 서버, 네트워크 직접 구성  
-PaaS| Elastic Beanstalk, RDS| 코드만 올리면 자동 배포  
-SaaS| Amazon Chime, WorkDocs| 그냥 쓰면 됨  
+IaaS | EC2, VPC, S3 | 가상 서버, 네트워크 직접 구성  
+PaaS | Elastic Beanstalk, RDS | 코드만 올리면 자동 배포  
+SaaS | Amazon Chime, WorkDocs | 그냥 쓰면 됨  
   
 **AWS 컴퓨팅 서비스 출시 연표** :
 
@@ -212,15 +214,15 @@ EC2(Elastic Compute Cloud)는 AWS의 핵심 컴퓨팅 서비스다. 클라우드
 
 ### 4.2 EC2 인스턴스 생성 시 결정사항
 
-항목| 설명| 예시  
+항목 | 설명 | 예시  
 ---|---|---  
-**이름 및 태그**|  리소스 식별·관리용 태그 부여| `Name: web-server-01`, `Env: production`  
-**AMI**|  인스턴스의 OS 이미지 템플릿| Ubuntu 24.04 LTS, Amazon Linux 2023  
-**인스턴스 유형**|  CPU/메모리 조합| `t3.medium` (2vCPU, 4GB)  
-**키 페어**|  SSH 접속을 위한 공개키/프라이빗키| `user-key.pem`  
-**네트워크/보안**|  VPC, 서브넷, 보안 그룹 설정| default VPC, port 22/80/443 허용  
-**스토리지**|  EBS 볼륨 크기와 타입| 20GB gp3  
-**사용자 데이터**|  인스턴스 최초 시작 시 실행할 스크립트| Nginx 자동 설치  
+**이름 및 태그** | 리소스 식별·관리용 태그 부여 | `Name: web-server-01`, `Env: production`  
+**AMI** | 인스턴스의 OS 이미지 템플릿 | Ubuntu 24.04 LTS, Amazon Linux 2023  
+**인스턴스 유형** | CPU/메모리 조합 | `t3.medium` (2vCPU, 4GB)  
+**키 페어** | SSH 접속을 위한 공개키/프라이빗키 | `user-key.pem`  
+**네트워크/보안** | VPC, 서브넷, 보안 그룹 설정 | default VPC, port 22/80/443 허용  
+**스토리지** | EBS 볼륨 크기와 타입 | 20GB gp3  
+**사용자 데이터** | 인스턴스 최초 시작 시 실행할 스크립트 | Nginx 자동 설치  
   
 ### 4.3 AMI (Amazon Machine Image)
 
@@ -234,10 +236,13 @@ AMI 구성요소:
 
 
 
-AMI를 얻는 방법:  
-1\. **AWS 제공 AMI** : Ubuntu, Amazon Linux, Windows Server 등 공식 이미지  
-2\. **AWS Marketplace** : 상용 소프트웨어가 사전 설치된 이미지  
-3\. **직접 생성** : 기존 인스턴스에서 커스텀 AMI 생성
+AMI를 얻는 방법:
+
+  1. **AWS 제공 AMI** : Ubuntu, Amazon Linux, Windows Server 등 공식 이미지
+  2. **AWS Marketplace** : 상용 소프트웨어가 사전 설치된 이미지
+  3. **직접 생성** : 기존 인스턴스에서 커스텀 AMI 생성
+
+
 
 AMI의 장점: **반복 가능(Repeatable)** , **재사용 가능(Reusable)** , **복구 가능(Recoverable)**
 
@@ -255,14 +260,14 @@ AMI의 장점: **반복 가능(Repeatable)** , **재사용 가능(Reusable)** , 
 
 **인스턴스 패밀리 상세** :
 
-패밀리| 특징| 사용 케이스  
+패밀리 | 특징 | 사용 케이스  
 ---|---|---  
-**T (버스트 가능 범용)**|  평소 낮은 CPU, 필요 시 버스트| 개발/테스트, 소규모 웹서버  
-**M (범용)**|  CPU:메모리 = 1:4 균형| 웹/앱 서버, 중간 규모 DB  
-**C (컴퓨팅 최적화)**|  CPU:메모리 = 1:2| 배치 처리, HPC, 게임 서버, ML 추론  
-**R (메모리 최적화)**|  CPU:메모리 = 1:8 이상| 대용량 인메모리 DB, 실시간 빅데이터  
-**I (스토리지 최적화)**|  고성능 NVMe SSD| NoSQL, 데이터웨어하우스  
-**P/G (가속 컴퓨팅)**|  GPU 탑재| ML 훈련, 영상 렌더링, 과학 계산  
+**T (버스트 가능 범용)** | 평소 낮은 CPU, 필요 시 버스트 | 개발/테스트, 소규모 웹서버  
+**M (범용)** | CPU:메모리 = 1:4 균형 | 웹/앱 서버, 중간 규모 DB  
+**C (컴퓨팅 최적화)** | CPU:메모리 = 1:2 | 배치 처리, HPC, 게임 서버, ML 추론  
+**R (메모리 최적화)** | CPU:메모리 = 1:8 이상 | 대용량 인메모리 DB, 실시간 빅데이터  
+**I (스토리지 최적화)** | 고성능 NVMe SSD | NoSQL, 데이터웨어하우스  
+**P/G (가속 컴퓨팅)** | GPU 탑재 | ML 훈련, 영상 렌더링, 과학 계산  
   
 최신 세대 인스턴스를 쓰는 게 유리하다 — 이전 세대 대비 성능 향상, 비용 절감, 더 나은 확장성.
 
@@ -270,19 +275,19 @@ AMI의 장점: **반복 가능(Repeatable)** , **재사용 가능(Reusable)** , 
 
 **테넌시(Tenancy)** — EC2가 어느 물리 서버에서 실행되는지 결정
 
-테넌시| 설명| 비용  
+테넌시 | 설명 | 비용  
 ---|---|---  
-공유 테넌시| 다른 고객과 하드웨어 공유| 가장 저렴  
-전용 인스턴스| 전용 하드웨어, 하지만 AWS가 배치| 비쌈  
-전용 호스트| 특정 물리 서버를 통째로 점유, 소켓 단위 제어| 가장 비쌈  
+공유 테넌시 | 다른 고객과 하드웨어 공유 | 가장 저렴  
+전용 인스턴스 | 전용 하드웨어, 하지만 AWS가 배치 | 비쌈  
+전용 호스트 | 특정 물리 서버를 통째로 점유, 소켓 단위 제어 | 가장 비쌈  
   
 **배치 그룹(Placement Group)**
 
-유형| 배치 방식| 사용 케이스  
+유형 | 배치 방식 | 사용 케이스  
 ---|---|---  
-클러스터| 서로 인접하게| HPC — 낮은 지연시간, 높은 처리량  
-분산형| 여러 랙에 분산| 의료 기록 시스템 — 내결함성  
-파티션| 논리 그룹으로 분할| Kafka, Hadoop — 대규모 분산 워크로드  
+클러스터 | 서로 인접하게 | HPC — 낮은 지연시간, 높은 처리량  
+분산형 | 여러 랙에 분산 | 의료 기록 시스템 — 내결함성  
+파티션 | 논리 그룹으로 분할 | Kafka, Hadoop — 대규모 분산 워크로드  
   
 ### 4.6 사용자 데이터 (User Data)
 
@@ -298,12 +303,12 @@ AMI의 장점: **반복 가능(Repeatable)** , **재사용 가능(Reusable)** , 
 
 ### 4.7 EC2 구매 옵션 — 비용 최적화
 
-옵션| 할인율| 약정| 특징  
+옵션 | 할인율 | 약정 | 특징  
 ---|---|---|---  
-**온디맨드**|  기준가| 없음| 언제든 시작/종료, 단기 임시 워크로드  
-**Compute Savings Plans**|  최대 66%| 1/3년| EC2, Fargate, Lambda에 유연 적용  
-**EC2 Instance Savings Plans**|  최대 72%| 1/3년| 특정 리전·패밀리 고정, 가장 저렴  
-**스팟 인스턴스**|  최대 90%| 없음| AWS 여유 용량 사용, 중단 가능성 있음  
+**온디맨드** | 기준가 | 없음 | 언제든 시작/종료, 단기 임시 워크로드  
+**Compute Savings Plans** | 최대 66% | 1/3년 | EC2, Fargate, Lambda에 유연 적용  
+**EC2 Instance Savings Plans** | 최대 72% | 1/3년 | 특정 리전·패밀리 고정, 가장 저렴  
+**스팟 인스턴스** | 최대 90% | 없음 | AWS 여유 용량 사용, 중단 가능성 있음  
   
 실전 조합 전략: **온디맨드(베이스) + Savings Plans(예측 가능한 부분) + Spot(내결함성 워크로드)**
 
@@ -352,13 +357,13 @@ Amazon S3(Simple Storage Service)는 **무제한 용량의 객체 스토리지 �
 
 S3 주요 특성:
 
-항목| 내용  
+항목 | 내용  
 ---|---  
-**내구성**|  99.999999999% (11 nines) — 데이터 자동 3중 복제  
-**가용성**|  Standard 기준 99.99% SLA  
-**용량**|  무제한 (단일 객체 최대 5TB)  
-**버킷 이름**|  전 세계 고유, 소문자·숫자·하이픈만 허용  
-**범위**|  특정 리전에 버킷 생성, 리전 내 여러 AZ에 자동 복제  
+**내구성** | 99.999999999% (11 nines) — 데이터 자동 3중 복제  
+**가용성** | Standard 기준 99.99% SLA  
+**용량** | 무제한 (단일 객체 최대 5TB)  
+**버킷 이름** | 전 세계 고유, 소문자·숫자·하이픈만 허용  
+**범위** | 특정 리전에 버킷 생성, 리전 내 여러 AZ에 자동 복제  
   
 S3 URL 형식:
 [code] 
@@ -370,15 +375,15 @@ S3 URL 형식:
 
 데이터 접근 빈도에 따라 최적의 클래스를 선택해 비용을 절감한다.
 
-클래스| 가용성| 최소 보존| 복구 시간| 사용 케이스  
+클래스 | 가용성 | 최소 보존 | 복구 시간 | 사용 케이스  
 ---|---|---|---|---  
-**Standard**|  99.99%| 없음| 즉시| 자주 접근 (웹 서빙, 분석)  
-**Intelligent-Tiering**|  99.9%| 없음| 즉시| 접근 패턴 불규칙  
-**Standard-IA**|  99.9%| 30일| 즉시| 월 1회 미만 접근, DR 백업  
-**One Zone-IA**|  99.5%| 30일| 즉시| 재생성 가능한 데이터, 저비용  
-**Glacier Instant Retrieval**|  99.9%| 90일| 밀리초| 분기별 접근  
-**Glacier Flexible Retrieval**|  99.99%| 90일| 1분~12시간| 연간 접근, 아카이브  
-**Glacier Deep Archive**|  99.99%| 180일| 12~48시간| 7~10년 장기 보관, 규정 준수  
+**Standard** | 99.99% | 없음 | 즉시 | 자주 접근 (웹 서빙, 분석)  
+**Intelligent-Tiering** | 99.9% | 없음 | 즉시 | 접근 패턴 불규칙  
+**Standard-IA** | 99.9% | 30일 | 즉시 | 월 1회 미만 접근, DR 백업  
+**One Zone-IA** | 99.5% | 30일 | 즉시 | 재생성 가능한 데이터, 저비용  
+**Glacier Instant Retrieval** | 99.9% | 90일 | 밀리초 | 분기별 접근  
+**Glacier Flexible Retrieval** | 99.99% | 90일 | 1분~12시간 | 연간 접근, 아카이브  
+**Glacier Deep Archive** | 99.99% | 180일 | 12~48시간 | 7~10년 장기 보관, 규정 준수  
   
 ### 5.3 S3 버전 관리 (Versioning)
 
@@ -452,14 +457,14 @@ EBS 특성:
 
 ### 6.2 EBS 볼륨 타입
 
-타입| 분류| 최대 IOPS| 최대 처리량| 특징 및 사용 케이스  
+타입 | 분류 | 최대 IOPS | 최대 처리량 | 특징 및 사용 케이스  
 ---|---|---|---|---  
-**gp3**|  SSD 범용| 16,000| 1,000 MB/s| **신규 기본값**. 용량과 IOPS 독립 설정 가능  
-**gp2**|  SSD 범용| 16,000| 250 MB/s| 구형. IOPS = 용량(GB) × 3 자동 결정 (gp3 권장)  
-**io2 Block Express**|  프로비저닝 IOPS SSD| 256,000| 4,000 MB/s| 최고 성능 DB (SAP HANA, Oracle RAC)  
-**io1**|  프로비저닝 IOPS SSD| 64,000| 1,000 MB/s| 고성능 DB, 지연 시간 민감 워크로드  
-**st1**|  처리량 최적화 HDD| 500| 500 MB/s| Hadoop, Kafka, 로그 처리 (순차 읽기/쓰기)  
-**sc1**|  콜드 HDD| 250| 250 MB/s| 접근 빈도 낮은 아카이브 데이터 (최저 비용)  
+**gp3** | SSD 범용 | 16,000 | 1,000 MB/s | **신규 기본값**. 용량과 IOPS 독립 설정 가능  
+**gp2** | SSD 범용 | 16,000 | 250 MB/s | 구형. IOPS = 용량(GB) × 3 자동 결정 (gp3 권장)  
+**io2 Block Express** | 프로비저닝 IOPS SSD | 256,000 | 4,000 MB/s | 최고 성능 DB (SAP HANA, Oracle RAC)  
+**io1** | 프로비저닝 IOPS SSD | 64,000 | 1,000 MB/s | 고성능 DB, 지연 시간 민감 워크로드  
+**st1** | 처리량 최적화 HDD | 500 | 500 MB/s | Hadoop, Kafka, 로그 처리 (순차 읽기/쓰기)  
+**sc1** | 콜드 HDD | 250 | 250 MB/s | 접근 빈도 낮은 아카이브 데이터 (최저 비용)  
   
 > **gp3 vs gp2** : gp3는 용량과 IOPS/처리량을 각각 독립적으로 설정 가능. 동일 성능 대비 gp3가 최대 20% 저렴하며 AWS 권장 타입.
 
@@ -487,14 +492,14 @@ EBS 특성:
 
 ### 7.1 관계형 vs 비관계형 — 어떤 DB를 선택할까?
 
-특성| 관계형(SQL)| 비관계형(NoSQL)  
+특성 | 관계형(SQL) | 비관계형(NoSQL)  
 ---|---|---  
-데이터 구조| 행과 열로 이뤄진 테이블| 키-값, 문서, 와이드 컬럼, 그래프  
-스키마| 고정됨 (변경이 어려움)| 동적 (자유롭게 변경 가능)  
-확장 방식| 수직 확장 (서버 업그레이드)| 수평 확장 (서버 추가)  
-일관성| 강력한 일관성 (ACID)| 최종적 일관성 (BASE) 지원  
-AWS 서비스| RDS, Aurora| DynamoDB, ElastiCache  
-선택 기준| 엄격한 스키마, 트랜잭션 필요| 유연한 데이터, 초고속 읽기/쓰기 필요  
+데이터 구조 | 행과 열로 이뤄진 테이블 | 키-값, 문서, 와이드 컬럼, 그래프  
+스키마 | 고정됨 (변경이 어려움) | 동적 (자유롭게 변경 가능)  
+확장 방식 | 수직 확장 (서버 업그레이드) | 수평 확장 (서버 추가)  
+일관성 | 강력한 일관성 (ACID) | 최종적 일관성 (BASE) 지원  
+AWS 서비스 | RDS, Aurora | DynamoDB, ElastiCache  
+선택 기준 | 엄격한 스키마, 트랜잭션 필요 | 유연한 데이터, 초고속 읽기/쓰기 필요  
   
 ### 7.2 Amazon RDS — 관리형 관계형 데이터베이스
 
@@ -502,13 +507,13 @@ RDS는 MySQL, PostgreSQL, Oracle, SQL Server, MariaDB, IBM Db2를 관리형으�
 
 **관리형 서비스의 장점** :
 
-항목| EC2에 직접 설치| Amazon RDS  
+항목 | EC2에 직접 설치 | Amazon RDS  
 ---|---|---  
-OS 설치/패치| 직접| AWS  
-DB 소프트웨어 패치| 직접| AWS  
-백업| 직접| AWS (자동)  
-고가용성 구성| 직접| Multi-AZ 클릭 한 번  
-스케일링| 직접| 콘솔에서 변경  
+OS 설치/패치 | 직접 | AWS  
+DB 소프트웨어 패치 | 직접 | AWS  
+백업 | 직접 | AWS (자동)  
+고가용성 구성 | 직접 | Multi-AZ 클릭 한 번  
+스케일링 | 직접 | 콘솔에서 변경  
   
 **Multi-AZ 배포 — 고가용성**
 
@@ -557,12 +562,12 @@ Aurora는 AWS가 처음부터 클라우드용으로 설계한 관계형 DB다. M
 
 **Aurora가 특별한 이유** :
 
-항목| MySQL on RDS| Aurora  
+항목 | MySQL on RDS | Aurora  
 ---|---|---  
-성능| 기준| MySQL 대비 최대 5배  
-데이터 복사본| 2개 (Multi-AZ)| 3개 AZ × 2 = **6개 복사본**  
-읽기 복제본| 최대 5개| 최대 15개  
-스토리지| 수동 확장| **자동 확장** (최대 128TB)  
+성능 | 기준 | MySQL 대비 최대 5배  
+데이터 복사본 | 2개 (Multi-AZ) | 3개 AZ × 2 = **6개 복사본**  
+읽기 복제본 | 최대 5개 | 최대 15개  
+스토리지 | 수동 확장 | **자동 확장** (최대 128TB)  
   
 Aurora DB 클러스터 구조:
 [code] 
@@ -601,10 +606,10 @@ Aurora DB 클러스터 구조:
 
 **용량 모드** :
 
-모드| 설명| 사용 시점  
+모드 | 설명 | 사용 시점  
 ---|---|---  
-온디맨드| 요청 당 과금| 트래픽 예측 불가, 스파이크 워크로드  
-프로비저닝| RCU/WCU 사전 설정| 트래픽 예측 가능, 비용 최적화  
+온디맨드 | 요청 당 과금 | 트래픽 예측 불가, 스파이크 워크로드  
+프로비저닝 | RCU/WCU 사전 설정 | 트래픽 예측 가능, 비용 최적화  
   
   * **RCU (읽기 용량 단위)** : 최대 4KB 항목 1회 읽기
   * **WCU (쓰기 용량 단위)** : 최대 1KB 항목 1회 쓰기
@@ -613,10 +618,10 @@ Aurora DB 클러스터 구조:
 
 **읽기 일관성** :
 
-유형| RCU 소비| 설명  
+유형 | RCU 소비 | 설명  
 ---|---|---  
-강력한 읽기 일관성| 1 RCU| 가장 최신 데이터 보장  
-최종적 읽기 일관성| 0.5 RCU| 약간의 지연 가능, 비용 절감  
+강력한 읽기 일관성 | 1 RCU | 가장 최신 데이터 보장  
+최종적 읽기 일관성 | 0.5 RCU | 약간의 지연 가능, 비용 절감  
   
 ### 7.5 캐싱 전략 — ElastiCache
 
@@ -638,8 +643,7 @@ ElastiCache는 Redis와 Memcached를 관리형으로 제공한다.
        캐시 MISS → DB 조회 → 캐시에 저장 → 반환 (느림, but 다음엔 빠름)
 [/code]
 
-장점: 캐시에는 실제로 요청된 데이터만 저장됨  
-단점: 첫 번째 요청은 항상 느림 (Cache Miss)
+장점: 캐시에는 실제로 요청된 데이터만 저장됨 단점: 첫 번째 요청은 항상 느림 (Cache Miss)
 
 **캐싱 전략 2 — Write-Through (쓰기 시 동기화)**
 [code] 
@@ -648,8 +652,7 @@ ElastiCache는 Redis와 Memcached를 관리형으로 제공한다.
         → 캐시에도 즉시 저장
 [/code]
 
-장점: 캐시 데이터가 항상 최신  
-단점: 모든 쓰기 작업에서 캐시도 업데이트 (오버헤드)
+장점: 캐시 데이터가 항상 최신 단점: 모든 쓰기 작업에서 캐시도 업데이트 (오버헤드)
 
 **캐시 만료 — TTL (Time To Live)**
 [code] 
@@ -694,12 +697,12 @@ VPC 특징:
     범위: 10.22.0.0 ~ 10.22.255.255 (65,536개 IP)
 [/code]
 
-CIDR| IP 개수| 사용 예시  
+CIDR | IP 개수 | 사용 예시  
 ---|---|---  
-`/16`| 65,536| VPC  
-`/20`| 4,096| 대형 서브넷  
-`/24`| 256| 일반 서브넷  
-`/28`| 16| 소형 서브넷  
+`/16` | 65,536 | VPC  
+`/20` | 4,096 | 대형 서브넷  
+`/24` | 256 | 일반 서브넷  
+`/28` | 16 | 소형 서브넷  
   
 > AWS는 각 서브넷에서 5개의 IP를 예약한다 (네트워크 주소, VPC 라우터, DNS, 미래 사용, 브로드캐스트).
 
@@ -716,21 +719,26 @@ CIDR| IP 개수| 사용 예시
         └── 프라이빗 서브넷: 172.31.48.0/20
 [/code]
 
-**퍼블릭 서브넷** : 인터넷에서 직접 접근 가능 → 웹 서버, Load Balancer  
-**프라이빗 서브넷** : 인터넷에서 직접 접근 불가 → 앱 서버, 데이터베이스
+**퍼블릭 서브넷** : 인터넷에서 직접 접근 가능 → 웹 서버, Load Balancer **프라이빗 서브넷** : 인터넷에서 직접 접근 불가 → 앱 서버, 데이터베이스
 
 ### 8.4 인터넷 게이트웨이 (IGW)
 
 인터넷 게이트웨이는 VPC와 인터넷 사이의 관문이다. 퍼블릭 서브넷의 인스턴스가 인터넷과 통신하려면 반드시 필요하다.
 
-IGW 역할:  
-1\. VPC 리소스와 인터넷 간의 통신 허용  
-2\. NAT(Network Address Translation) 수행 — 프라이빗 IP ↔ 퍼블릭 IP 변환
+IGW 역할:
 
-**퍼블릭 서브넷 조건** (세 가지 모두 필요):  
-1\. VPC에 IGW 연결  
-2\. 라우팅 테이블에 `0.0.0.0/0 → IGW` 경로 추가  
-3\. 인스턴스에 퍼블릭 IP 할당
+  1. VPC 리소스와 인터넷 간의 통신 허용
+  2. NAT(Network Address Translation) 수행 — 프라이빗 IP ↔ 퍼블릭 IP 변환
+
+
+
+**퍼블릭 서브넷 조건** (세 가지 모두 필요):
+
+  1. VPC에 IGW 연결
+  2. 라우팅 테이블에 `0.0.0.0/0 → IGW` 경로 추가
+  3. 인스턴스에 퍼블릭 IP 할당
+
+
 
 ### 8.5 라우팅 테이블
 
@@ -780,13 +788,13 @@ NAT GW는 반드시 **퍼블릭 서브넷** 에 위치하고, **탄력적 IP(EIP
 
 AWS에는 두 가지 방화벽 계층이 있다.
 
-항목| 보안 그룹 (Security Group)| 네트워크 ACL (NACL)  
+항목 | 보안 그룹 (Security Group) | 네트워크 ACL (NACL)  
 ---|---|---  
-**적용 단위**|  인스턴스 (ENI 수준)| 서브넷 수준  
-**규칙 유형**|  허용 규칙만| 허용 + 거부 규칙  
-**상태**| **Stateful** — 응답 트래픽 자동 허용| **Stateless** — 인바운드/아웃바운드 각각 설정  
-**규칙 평가**|  모든 규칙을 동시 평가| 번호 순서대로 평가, 첫 번째 매칭에서 종료  
-**기본 규칙**|  모든 인바운드 차단, 모든 아웃바운드 허용| 모든 트래픽 허용  
+**적용 단위** | 인스턴스 (ENI 수준) | 서브넷 수준  
+**규칙 유형** | 허용 규칙만 | 허용 + 거부 규칙  
+**상태** | **Stateful** — 응답 트래픽 자동 허용 | **Stateless** — 인바운드/아웃바운드 각각 설정  
+**규칙 평가** | 모든 규칙을 동시 평가 | 번호 순서대로 평가, 첫 번째 매칭에서 종료  
+**기본 규칙** | 모든 인바운드 차단, 모든 아웃바운드 허용 | 모든 트래픽 허용  
   
 **트래픽 흐름** :
 [code] 
@@ -849,12 +857,12 @@ ELB 제공 기능:
 
 ### 9.2 ELB 유형 4가지
 
-유형| OSI 계층| 라우팅 기준| 주요 프로토콜| 사용 케이스  
+유형 | OSI 계층 | 라우팅 기준 | 주요 프로토콜 | 사용 케이스  
 ---|---|---|---|---  
-**ALB** (Application)| 7계층| URL 경로, 헤더, 메서드, 쿼리 파라미터| HTTP/HTTPS, gRPC, WebSocket| 웹 앱, MSA, API Gateway 앞단  
-**NLB** (Network)| 4계층| IP + 포트| TCP, UDP, TLS| 초저지연, 고성능, 고정 IP 필요 시  
-**CLB** (Classic)| 4/7계층 혼합| 기본 HTTP/TCP| HTTP, HTTPS, TCP| 구형 (신규 사용 비권장)  
-**GWLB** (Gateway)| 3계층| IP 패킷 전체| IP (GENEVE 캡슐화)| 방화벽·IDS/IPS 어플라이언스 투명 삽입  
+**ALB** (Application) | 7계층 | URL 경로, 헤더, 메서드, 쿼리 파라미터 | HTTP/HTTPS, gRPC, WebSocket | 웹 앱, MSA, API Gateway 앞단  
+**NLB** (Network) | 4계층 | IP + 포트 | TCP, UDP, TLS | 초저지연, 고성능, 고정 IP 필요 시  
+**CLB** (Classic) | 4/7계층 혼합 | 기본 HTTP/TCP | HTTP, HTTPS, TCP | 구형 (신규 사용 비권장)  
+**GWLB** (Gateway) | 3계층 | IP 패킷 전체 | IP (GENEVE 캡슐화) | 방화벽·IDS/IPS 어플라이언스 투명 삽입  
   
 ### 9.3 ALB — Application Load Balancer
 
@@ -903,17 +911,16 @@ Auto Scaling은 애플리케이션 부하에 따라 EC2 인스턴스 수를 자�
 
 **Auto Scaling Group(ASG) 핵심 설정값** :
 
-설정| 설명| 예시  
+설정 | 설명 | 예시  
 ---|---|---  
-**최소 용량 (Min)**|  항상 유지할 인스턴스 최솟값| 2  
-**최대 용량 (Max)**|  절대 초과하지 않을 상한선| 10  
-**희망 용량 (Desired)**|  현재 목표 인스턴스 수| 4  
-**시작 템플릿**|  신규 인스턴스 생성 명세 (AMI, 유형, SG 등)| lt-0abc1234  
+**최소 용량 (Min)** | 항상 유지할 인스턴스 최솟값 | 2  
+**최대 용량 (Max)** | 절대 초과하지 않을 상한선 | 10  
+**희망 용량 (Desired)** | 현재 목표 인스턴스 수 | 4  
+**시작 템플릿** | 신규 인스턴스 생성 명세 (AMI, 유형, SG 등) | lt-0abc1234  
   
 ### 10.2 Auto Scaling 정책 4가지
 
-**① 목표 추적 조정 (Target Tracking)** — 권장  
-지정 지표를 목표값으로 자동 유지. 설정이 가장 간단하고 효과적이다.
+**① 목표 추적 조정 (Target Tracking)** — 권장 지정 지표를 목표값으로 자동 유지. 설정이 가장 간단하고 효과적이다.
 [code] 
     설정: "ALB RequestCountPerTarget = 1000"
     → 대상당 요청이 1000을 초과 → 인스턴스 자동 추가
@@ -922,19 +929,16 @@ Auto Scaling은 애플리케이션 부하에 따라 EC2 인스턴스 수를 자�
 
 사용 가능 지표: `CPUUtilization`, `ALBRequestCountPerTarget`, `NetworkIn/Out`
 
-**② 단계 조정 (Step Scaling)**  
-지표 수치 구간별로 단계적으로 다른 크기 조정.
+**② 단계 조정 (Step Scaling)** 지표 수치 구간별로 단계적으로 다른 크기 조정.
 [code] 
     CPU 60~70% → +1개
     CPU 70~85% → +3개
     CPU 85% 이상 → +5개
 [/code]
 
-**③ 단순 조정 (Simple Scaling)**  
-CloudWatch 알람 하나에 고정 수량 조정. (현재는 Step Scaling으로 대체 추세)
+**③ 단순 조정 (Simple Scaling)** CloudWatch 알람 하나에 고정 수량 조정. (현재는 Step Scaling으로 대체 추세)
 
-**④ 예약 조정 (Scheduled Scaling)**  
-특정 시간대에 미리 용량 조정.
+**④ 예약 조정 (Scheduled Scaling)** 특정 시간대에 미리 용량 조정.
 [code] 
     매일 오전 08:00 → 인스턴스 10개 (업무 시작 대비)
     매일 자정 00:00 → 인스턴스 2개 (야간 최소 운영)
@@ -975,10 +979,13 @@ Route53은 AWS의 완전 관리형 DNS(Domain Name System) 서비스다.
     해당 IP로 실제 연결
 [/code]
 
-Route53 3가지 기능:  
-1\. **도메인 등록** : Route53에서 직접 도메인 구매 가능  
-2\. **DNS 레코드 관리** : A, AAAA, CNAME, MX, TXT, NS, SOA 레코드 관리  
-3\. **트래픽 라우팅 + 헬스 체크** : 엔드포인트 상태를 모니터링해 자동 장애 전환
+Route53 3가지 기능:
+
+  1. **도메인 등록** : Route53에서 직접 도메인 구매 가능
+  2. **DNS 레코드 관리** : A, AAAA, CNAME, MX, TXT, NS, SOA 레코드 관리
+  3. **트래픽 라우팅 + 헬스 체크** : 엔드포인트 상태를 모니터링해 자동 장애 전환
+
+
 
 ### 11.2 Route53 라우팅 정책 6가지
 
@@ -998,9 +1005,7 @@ Route53 3가지 기능:
 
 카나리 배포(신버전에 일부 트래픽 먼저 전송), 부하 분산에 활용.
 
-**③ 지연 시간 기반 라우팅 (Latency)**  
-사용자와 각 AWS 리전 간 네트워크 지연 시간을 측정해 **가장 빠른 리전** 의 엔드포인트를 반환.  
-글로벌 서비스에서 사용자 경험 최적화에 사용.
+**③ 지연 시간 기반 라우팅 (Latency)** 사용자와 각 AWS 리전 간 네트워크 지연 시간을 측정해 **가장 빠른 리전** 의 엔드포인트를 반환. 글로벌 서비스에서 사용자 경험 최적화에 사용.
 
 **④ 장애 조치 라우팅 (Failover)**
 [code] 
@@ -1009,8 +1014,7 @@ Route53 3가지 기능:
     Secondary: 도쿄 리전 ALB  ← 자동 전환 (Active-Passive DR)
 [/code]
 
-**⑤ 지리 위치 라우팅 (Geolocation)**  
-클라이언트의 **물리적 위치**(국가, 대륙)를 기반으로 라우팅.
+**⑤ 지리 위치 라우팅 (Geolocation)** 클라이언트의 **물리적 위치**(국가, 대륙)를 기반으로 라우팅.
 [code] 
     한국 → 서울 리전 엔드포인트
     미국 → us-east-1 엔드포인트
@@ -1020,9 +1024,7 @@ Route53 3가지 기능:
 
 데이터 주권, 콘텐츠 현지화, GDPR 준수 등에 활용.
 
-**⑥ 다중값 응답 (Multivalue Answer)**  
-최대 8개의 정상 레코드를 무작위로 반환. 헬스 체크와 연동 가능.  
-ELB 대체용이 아닌 클라이언트 측 단순 분산 보조 수단.
+**⑥ 다중값 응답 (Multivalue Answer)** 최대 8개의 정상 레코드를 무작위로 반환. 헬스 체크와 연동 가능. ELB 대체용이 아닌 클라이언트 측 단순 분산 보조 수단.
 
 ### 11.3 Amazon CloudFront — CDN
 
@@ -1039,14 +1041,14 @@ CloudFront는 AWS의 콘텐츠 전송 네트워크(CDN) 서비스다. 전 세계
 
 **CloudFront 주요 개념** :
 
-용어| 설명  
+용어 | 설명  
 ---|---  
-**Distribution**|  CloudFront 배포 단위. 오리진과 동작(Behavior) 설정 포함  
-**Origin**|  원본 콘텐츠 위치 (S3, ALB, 커스텀 HTTP 서버)  
-**OAC (Origin Access Control)**|  S3 버킷을 퍼블릭으로 열지 않고 CloudFront만 접근 허용  
-**TTL**|  캐시 유지 시간 (기본 24시간, `Cache-Control` 헤더로 제어)  
-**Invalidation**|  특정 경로의 캐시를 강제 삭제 (`/images/*` 패턴 지원)  
-**Behavior**|  경로 패턴별 오리진, 캐시 정책, 허용 HTTP 메서드 분리 설정  
+**Distribution** | CloudFront 배포 단위. 오리진과 동작(Behavior) 설정 포함  
+**Origin** | 원본 콘텐츠 위치 (S3, ALB, 커스텀 HTTP 서버)  
+**OAC (Origin Access Control)** | S3 버킷을 퍼블릭으로 열지 않고 CloudFront만 접근 허용  
+**TTL** | 캐시 유지 시간 (기본 24시간, `Cache-Control` 헤더로 제어)  
+**Invalidation** | 특정 경로의 캐시를 강제 삭제 (`/images/*` 패턴 지원)  
+**Behavior** | 경로 패턴별 오리진, 캐시 정책, 허용 HTTP 메서드 분리 설정  
   
 **CloudFront + S3 정적 웹사이트 구성** :
 [code] 
@@ -1069,12 +1071,12 @@ CloudFront는 AWS의 콘텐츠 전송 네트워크(CDN) 서비스다. 전 세계
 
 ### 12.1 클라우드 배포 모델 4가지
 
-모델| 설명| 장단점  
+모델 | 설명 | 장단점  
 ---|---|---  
-**Public Cloud**|  AWS/Azure/GCP 단독 사용| 저비용, 빠른 시작, 유지보수 불필요  
-**Private Cloud**|  기업 전용 인프라 (온프레미스)| 높은 보안/제어권, 고비용  
-**Hybrid Cloud**|  Public + Private 조합| 민감 데이터는 Private, 나머지는 Public  
-**Multi Cloud**|  여러 CSP 동시 사용| 벤더 종속 탈피, 복잡한 운영  
+**Public Cloud** | AWS/Azure/GCP 단독 사용 | 저비용, 빠른 시작, 유지보수 불필요  
+**Private Cloud** | 기업 전용 인프라 (온프레미스) | 높은 보안/제어권, 고비용  
+**Hybrid Cloud** | Public + Private 조합 | 민감 데이터는 Private, 나머지는 Public  
+**Multi Cloud** | 여러 CSP 동시 사용 | 벤더 종속 탈피, 복잡한 운영  
   
 실제 기업들이 가장 많이 쓰는 패턴: **Hybrid Cloud** — 기존 온프레미스 인프라를 단번에 클라우드로 옮기기 어렵기 때문.
 
@@ -1122,13 +1124,13 @@ CloudFront는 AWS의 콘텐츠 전송 네트워크(CDN) 서비스다. 전 세계
 
 **VPN vs Direct Connect 언제 쓸까?**
 
-기준| VPN 선택| Direct Connect 선택  
+기준 | VPN 선택 | Direct Connect 선택  
 ---|---|---  
-구성 속도| 빠르게 필요| 충분히 준비 시간 있음  
-대역폭| 1.25Gbps 이하| 대용량 데이터 전송  
-비용| 저비용| 전용 회선 비용 감수  
-암호화| 기본 제공| 별도 구성 필요  
-인터넷 경유| Yes (암호화됨)| No (전용 회선)  
+구성 속도 | 빠르게 필요 | 충분히 준비 시간 있음  
+대역폭 | 1.25Gbps 이하 | 대용량 데이터 전송  
+비용 | 저비용 | 전용 회선 비용 감수  
+암호화 | 기본 제공 | 별도 구성 필요  
+인터넷 경유 | Yes (암호화됨) | No (전용 회선)  
   
 * * *
 
@@ -1140,10 +1142,13 @@ CloudFront는 AWS의 콘텐츠 전송 네트워크(CDN) 서비스다. 전 세계
 
 AWS 계정을 생성하면 **루트 사용자** 가 만들어진다. 루트 사용자는 모든 AWS 서비스에 대한 전체 접근 권한을 가진다. 이 계정이 탈취되면 전체 인프라가 위험하다.
 
-**루트 사용자로 해야 할 일** :  
-1\. 결제 정보 관리  
-2\. 초기 IAM 관리자 계정 생성  
-3\. AWS 계정 해지
+**루트 사용자로 해야 할 일** :
+
+  1. 결제 정보 관리
+  2. 초기 IAM 관리자 계정 생성
+  3. AWS 계정 해지
+
+
 
 그 외 모든 일상 작업은 **IAM 사용자** 로 해야 한다.
 
@@ -1228,12 +1233,12 @@ AWS 계정을 생성하면 **루트 사용자** 가 만들어진다. 루트 사�
 
 **정책 유형** :
 
-유형| 설명| 예시  
+유형 | 설명 | 예시  
 ---|---|---  
-AWS 관리형| AWS가 만들고 유지| `AmazonEC2FullAccess`  
-고객 관리형| 직접 만든 커스텀 정책| `MyCustomPolicy`  
-인라인 정책| 특정 사용자/역할에 직접 포함| 재사용 안 함  
-리소스 기반 정책| 리소스에 직접 연결| S3 버킷 정책  
+AWS 관리형 | AWS가 만들고 유지 | `AmazonEC2FullAccess`  
+고객 관리형 | 직접 만든 커스텀 정책 | `MyCustomPolicy`  
+인라인 정책 | 특정 사용자/역할에 직접 포함 | 재사용 안 함  
+리소스 기반 정책 | 리소스에 직접 연결 | S3 버킷 정책  
   
 ### 13.3 역할 수임 (Assume Role) 작동 방식
 [code] 
@@ -1307,26 +1312,26 @@ IAM 정책과 SCP의 교집합만 실제로 허용된다.
 
 **상세 비교표** :
 
-항목| Bare Metal| VM| Container  
+항목 | Bare Metal | VM | Container  
 ---|---|---|---  
-OS| 단일 OS| VM마다 별도 OS| 호스트 OS 공유  
-크기| -| 수 GB| 수 MB ~ 수백 MB  
-부팅 속도| 수 분| 수 분| **수 초 이내**  
-격리 수준| 물리적 완전 격리| 하드웨어 수준 격리| 프로세스 수준 격리  
-이식성| 낮음| 중간| **매우 높음**  
-성능| 최고| 오버헤드 있음| 거의 Native에 가까움  
-대표 기술| -| VMware, Hyper-V, KVM| **Docker** , containerd, Podman  
+OS | 단일 OS | VM마다 별도 OS | 호스트 OS 공유  
+크기 | - | 수 GB | 수 MB ~ 수백 MB  
+부팅 속도 | 수 분 | 수 분 | **수 초 이내**  
+격리 수준 | 물리적 완전 격리 | 하드웨어 수준 격리 | 프로세스 수준 격리  
+이식성 | 낮음 | 중간 | **매우 높음**  
+성능 | 최고 | 오버헤드 있음 | 거의 Native에 가까움  
+대표 기술 | - | VMware, Hyper-V, KVM | **Docker** , containerd, Podman  
   
 **상황별 선택 가이드** :
 
-상황| 추천| 이유  
+상황 | 추천 | 이유  
 ---|---|---  
-초고성능 DB 서버| Bare Metal| 가상화 오버헤드 없이 최대 I/O 성능  
-지연에 민감한 금융 트랜잭션| Bare Metal| 낮은 지연(latency), 안정적 성능  
-개발/테스트 환경 다수| VM| 다양한 OS 시뮬레이션 가능  
-고가용성 필요한 웹 서비스| VM| 스냅샷, Auto Scaling, HA 기본 지원  
-마이크로서비스 운영| **Container**|  경량, 빠른 배포, 환경 일관성  
-ML 워크로드| GPU VM / Container| GPU 탑재 VM, 또는 컨테이너로 이식성 확보  
+초고성능 DB 서버 | Bare Metal | 가상화 오버헤드 없이 최대 I/O 성능  
+지연에 민감한 금융 트랜잭션 | Bare Metal | 낮은 지연(latency), 안정적 성능  
+개발/테스트 환경 다수 | VM | 다양한 OS 시뮬레이션 가능  
+고가용성 필요한 웹 서비스 | VM | 스냅샷, Auto Scaling, HA 기본 지원  
+마이크로서비스 운영 | **Container** | 경량, 빠른 배포, 환경 일관성  
+ML 워크로드 | GPU VM / Container | GPU 탑재 VM, 또는 컨테이너로 이식성 확보  
   
 ### 14.2 Container의 핵심 특성
 
@@ -1334,12 +1339,12 @@ ML 워크로드| GPU VM / Container| GPU 탑재 VM, 또는 컨테이너로 이�
 
 4가지 핵심 특성:
 
-특성| 설명  
+특성 | 설명  
 ---|---  
-**Lightweight**|  OS를 포함하지 않아 가볍고 빠름  
-**Portable**|  "내 맥북에서 되는 게 서버에서도 된다"  
-**Isolated**|  컨테이너끼리 독립 실행, 서로 영향 없음  
-**Scalable**|  필요에 따라 즉시 수평 확장/축소  
+**Lightweight** | OS를 포함하지 않아 가볍고 빠름  
+**Portable** | "내 맥북에서 되는 게 서버에서도 된다"  
+**Isolated** | 컨테이너끼리 독립 실행, 서로 영향 없음  
+**Scalable** | 필요에 따라 즉시 수평 확장/축소  
   
 ### 14.3 MSA (Micro Service Architecture)
 
@@ -1392,20 +1397,20 @@ ML 워크로드| GPU VM / Container| GPU 탑재 VM, 또는 컨테이너로 이�
 
 **Control Plane (마스터 노드)** — 클러스터 전체를 관리·감독
 
-컴포넌트| 역할  
+컴포넌트 | 역할  
 ---|---  
-**API Server**|  클러스터의 프론트엔드. kubectl 명령어, 대시보드, CI/CD 파이프라인이 여기로 요청  
-**etcd**|  클러스터의 모든 상태 정보를 저장하는 고가용성 Key-Value DB. "Source of Truth"  
-**Scheduler**|  새 Pod를 어느 Worker Node에 배치할지 결정. 리소스 가용량, 제약 조건, 정책 고려  
-**Controller Manager**|  현재 상태와 원하는 상태의 차이를 감지하고 수렴시킴 (ReplicaSet 컨트롤러, 노드 컨트롤러 등)  
+**API Server** | 클러스터의 프론트엔드. kubectl 명령어, 대시보드, CI/CD 파이프라인이 여기로 요청  
+**etcd** | 클러스터의 모든 상태 정보를 저장하는 고가용성 Key-Value DB. "Source of Truth"  
+**Scheduler** | 새 Pod를 어느 Worker Node에 배치할지 결정. 리소스 가용량, 제약 조건, 정책 고려  
+**Controller Manager** | 현재 상태와 원하는 상태의 차이를 감지하고 수렴시킴 (ReplicaSet 컨트롤러, 노드 컨트롤러 등)  
   
 **Worker Node** — 실제 컨테이너가 실행되는 곳
 
-컴포넌트| 역할  
+컴포넌트 | 역할  
 ---|---  
-**kubelet**|  API Server와 통신하며 컨테이너 실행 명령을 수행. 노드의 상태를 API Server에 보고  
-**kube-proxy**|  네트워크 라우팅 관리. Service의 가상 IP로 들어오는 트래픽을 실제 Pod로 전달  
-**Container Runtime**|  컨테이너 실제 실행 엔진 (containerd, CRI-O 등)  
+**kubelet** | API Server와 통신하며 컨테이너 실행 명령을 수행. 노드의 상태를 API Server에 보고  
+**kube-proxy** | 네트워크 라우팅 관리. Service의 가상 IP로 들어오는 트래픽을 실제 Pod로 전달  
+**Container Runtime** | 컨테이너 실제 실행 엔진 (containerd, CRI-O 등)  
   
 ### 15.2 Kubernetes 클러스터 구축 실습
 
@@ -1528,7 +1533,7 @@ Pod는 Kubernetes에서 배포 가능한 **가장 작은 단위** 다. 하나 �
 
 ### 15.4 ReplicaSet — Pod를 N개 유지
 
-ReplicaSet은 **"이 Pod를 항상 N개 유지해줘"** 라고 선언하는 리소스다.
+ReplicaSet은 **" 이 Pod를 항상 N개 유지해줘"** 라고 선언하는 리소스다.
 [code] 
     # rs/rs-nginx.yaml
     apiVersion: apps/v1
@@ -1624,12 +1629,15 @@ Deployment = ReplicaSet 관리 + **롤링 업데이트 + 롤백**
     kubectl rollout undo deploy test-nginx-deploy --to-revision=1
 [/code]
 
-**롤링 업데이트 동작 방식** :  
-1\. 새 버전의 ReplicaSet 생성  
-2\. 새 ReplicaSet의 Pod를 1개씩 증가  
-3\. 이전 ReplicaSet의 Pod를 1개씩 감소  
-4\. 완전히 전환될 때까지 반복  
-5\. 이전 ReplicaSet은 Pod 0개로 유지 (롤백 대비)
+**롤링 업데이트 동작 방식** :
+
+  1. 새 버전의 ReplicaSet 생성
+  2. 새 ReplicaSet의 Pod를 1개씩 증가
+  3. 이전 ReplicaSet의 Pod를 1개씩 감소
+  4. 완전히 전환될 때까지 반복
+  5. 이전 ReplicaSet은 Pod 0개로 유지 (롤백 대비)
+
+
 
 **Deployment를 삭제하면 → 하위 ReplicaSet과 Pod도 모두 삭제됨.**
 
@@ -1715,11 +1723,11 @@ AWS EKS, GKE, AKS 등 클라우드 환경에서 사용 시 클라우드 로드�
 
 **서비스 타입 비교** :
 
-타입| 접근 범위| 사용 케이스  
+타입 | 접근 범위 | 사용 케이스  
 ---|---|---  
-ClusterIP| 클러스터 내부만| 서비스 간 내부 통신 (DB, 백엔드)  
-NodePort| 클러스터 외부 (노드 IP:포트)| 개발·테스트 환경 임시 노출  
-LoadBalancer| 인터넷 (퍼블릭 IP)| 프로덕션 서비스 외부 노출  
+ClusterIP | 클러스터 내부만 | 서비스 간 내부 통신 (DB, 백엔드)  
+NodePort | 클러스터 외부 (노드 IP:포트) | 개발·테스트 환경 임시 노출  
+LoadBalancer | 인터넷 (퍼블릭 IP) | 프로덕션 서비스 외부 노출  
   
 ### 15.7 Ingress — HTTP/HTTPS 경로 기반 라우팅
 
@@ -1732,7 +1740,7 @@ Service의 LoadBalancer 타입은 서비스마다 별도 로드밸런서를 생�
         ├── /api/orders  → orders-service:80
         └── /            → frontend-service:80
 [/code]
-[code] 
+[code]
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
@@ -1763,12 +1771,12 @@ Service의 LoadBalancer 타입은 서비스마다 별도 로드밸런서를 생�
 
 Ingress가 동작하려면 **Ingress Controller** 가 클러스터에 설치되어야 한다.
 
-환경| Ingress Controller  
+환경 | Ingress Controller  
 ---|---  
-온프레미스 / 범용| Nginx Ingress Controller  
-AWS EKS| AWS Load Balancer Controller (ALB 자동 생성)  
-GKE| GCE Ingress Controller  
-Azure AKS| Azure Application Gateway Ingress
+온프레미스 / 범용 | Nginx Ingress Controller  
+AWS EKS | AWS Load Balancer Controller (ALB 자동 생성)  
+GKE | GCE Ingress Controller  
+Azure AKS | Azure Application Gateway Ingress
 [code] 
     kubectl get ingress
     kubectl describe ingress app-ingress
@@ -1788,7 +1796,7 @@ HPA는 CPU 사용률 또는 커스텀 지표를 기준으로 **Pod 수를 자동
         ↓
     CPU 50% 안정 → 일정 시간 후 replicas 다시 축소
 [/code]
-[code] 
+[code]
     apiVersion: autoscaling/v2
     kind: HorizontalPodAutoscaler
     metadata:
@@ -1832,11 +1840,11 @@ HPA가 동작하려면 Pod에 `resources.requests` 설정이 **필수** 다:
 
 **HPA vs EC2 Auto Scaling 비교** :
 
-항목| EC2 Auto Scaling| Kubernetes HPA  
+항목 | EC2 Auto Scaling | Kubernetes HPA  
 ---|---|---  
-스케일 대상| EC2 인스턴스| Pod  
-소요 시간| 수 분 (인스턴스 부팅 포함)| 수 초~수십 초  
-비용 단위| 인스턴스 시간| Pod 리소스 사용량  
+스케일 대상 | EC2 인스턴스 | Pod  
+소요 시간 | 수 분 (인스턴스 부팅 포함) | 수 초~수십 초  
+비용 단위 | 인스턴스 시간 | Pod 리소스 사용량  
   
 ### 15.9 Namespace — 클러스터 내 논리적 격리
 
@@ -2002,7 +2010,7 @@ Pod가 실행되는 동안만 존재하는 임시 디렉터리. 같은 Pod의 �
                                          │
                                       Pod에서 사용
 [/code]
-[code] 
+[code]
     # PV 정의 (관리자가 스토리지 선언)
     apiVersion: v1
     kind: PersistentVolume
@@ -2045,11 +2053,11 @@ Pod가 실행되는 동안만 존재하는 임시 디렉터리. 같은 Pod의 �
 
 **accessModes 종류** :
 
-모드| 설명  
+모드 | 설명  
 ---|---  
-`ReadWriteOnce` (RWO)| 단일 노드에서 읽기/쓰기  
-`ReadOnlyMany` (ROX)| 여러 노드에서 읽기만  
-`ReadWriteMany` (RWX)| 여러 노드에서 읽기/쓰기 (NFS 등 필요)  
+`ReadWriteOnce` (RWO) | 단일 노드에서 읽기/쓰기  
+`ReadOnlyMany` (ROX) | 여러 노드에서 읽기만  
+`ReadWriteMany` (RWX) | 여러 노드에서 읽기/쓰기 (NFS 등 필요)  
   
 * * *
 
@@ -2059,12 +2067,12 @@ Pod가 실행되는 동안만 존재하는 임시 디렉터리. 같은 Pod의 �
 
 ### 16.1 AWS CI/CD 서비스 구성
 
-서비스| 역할| 비고  
+서비스 | 역할 | 비고  
 ---|---|---  
-**AWS CodeCommit**|  관리형 Git 저장소| GitHub로 대체 가능  
-**AWS CodeBuild**|  코드 빌드·테스트 자동화| buildspec.yml로 정의  
-**AWS CodeDeploy**|  EC2, Lambda, ECS에 자동 배포| appspec.yml로 정의  
-**AWS CodePipeline**|  위 서비스들을 연결하는 파이프라인 오케스트레이터| 소스 변경 감지 → 트리거
+**AWS CodeCommit** | 관리형 Git 저장소 | GitHub로 대체 가능  
+**AWS CodeBuild** | 코드 빌드·테스트 자동화 | buildspec.yml로 정의  
+**AWS CodeDeploy** | EC2, Lambda, ECS에 자동 배포 | appspec.yml로 정의  
+**AWS CodePipeline** | 위 서비스들을 연결하는 파이프라인 오케스트레이터 | 소스 변경 감지 → 트리거
 [code] 
     [소스 (S3 / GitHub)]
         ↓ 변경 감지 (CodePipeline이 트리거)
@@ -2116,10 +2124,13 @@ Pod가 실행되는 동안만 존재하는 임시 디렉터리. 같은 Pod의 �
 
 소스를 S3 대신 GitHub으로 변경하면 `git push`만으로 파이프라인이 자동 실행된다.
 
-**GitHub 설정** :  
-1\. Repository 생성 (Private)  
-2\. Personal Access Token 생성 (scopes: `repo`)  
-3\. AWS CodePipeline에서 GitHub App 연결
+**GitHub 설정** :
+
+  1. Repository 생성 (Private)
+  2. Personal Access Token 생성 (scopes: `repo`)
+  3. AWS CodePipeline에서 GitHub App 연결
+
+
 
 **로컬 → GitHub → CodePipeline 흐름** :
 [code] 
@@ -2181,12 +2192,12 @@ Angular 같은 프레임워크는 소스 코드를 바로 배포할 수 없다. 
 
 **phases 종류** :
 
-Phase| 설명  
+Phase | 설명  
 ---|---  
-`install`| 런타임 환경, 도구 설치  
-`pre_build`| 빌드 전 작업 (의존성 설치, 인증 등)  
-`build`| 실제 빌드, 테스트  
-`post_build`| 빌드 후 작업 (알림, 정리 등)  
+`install` | 런타임 환경, 도구 설치  
+`pre_build` | 빌드 전 작업 (의존성 설치, 인증 등)  
+`build` | 실제 빌드, 테스트  
+`post_build` | 빌드 후 작업 (알림, 정리 등)  
   
 파이프라인 구성:
 [code] 
@@ -2296,9 +2307,9 @@ S3가 아닌 EC2 인스턴스에 빌드 결과물을 배포할 때는 **CodeDepl
   * `HalfAtATime`: 절반씩 배포
   * `OneAtATime`: 1개씩 배포 (가장 안전, 가장 느림)
 
-다운타임| 롤백| 비용| 버전 혼재  
+다운타임 | 롤백 | 비용 | 버전 혼재  
 ---|---|---|---  
-없음| 느림 (전체 재배포)| 없음| 있음  
+없음 | 느림 (전체 재배포) | 없음 | 있음  
   
 ### 17.2 Blue/Green 배포
 
@@ -2317,9 +2328,9 @@ CodeDeploy Blue/Green 설정 포인트:
   * 트래픽 재라우팅: 즉시 또는 N분 대기 후 자동 전환
   * Blue 환경 처리: 전환 성공 후 N분 뒤 자동 종료
 
-다운타임| 롤백| 비용| 버전 혼재  
+다운타임 | 롤백 | 비용 | 버전 혼재  
 ---|---|---|---  
-없음| 즉시| 높음 (인스턴스 2배)| 없음  
+없음 | 즉시 | 높음 (인스턴스 2배) | 없음  
   
 ### 17.3 Canary 배포
 
@@ -2333,18 +2344,18 @@ CodeDeploy Blue/Green 설정 포인트:
 
 AWS CodeDeploy 사전 정의 Canary 설정:
 
-설정 이름| 내용  
+설정 이름 | 내용  
 ---|---  
-`Canary10Percent5Minutes`| 10% 먼저, 5분 뒤 나머지 90%  
-`Canary10Percent10Minutes`| 10% 먼저, 10분 뒤 나머지 90%  
-`Canary10Percent15Minutes`| 10% 먼저, 15분 뒤 나머지 90%  
-`Canary10Percent30Minutes`| 10% 먼저, 30분 뒤 나머지 90%  
+`Canary10Percent5Minutes` | 10% 먼저, 5분 뒤 나머지 90%  
+`Canary10Percent10Minutes` | 10% 먼저, 10분 뒤 나머지 90%  
+`Canary10Percent15Minutes` | 10% 먼저, 15분 뒤 나머지 90%  
+`Canary10Percent30Minutes` | 10% 먼저, 30분 뒤 나머지 90%  
   
 Lambda, ECS에서 주로 활용됨.
 
-다운타임| 롤백| 비용| 버전 혼재  
+다운타임 | 롤백 | 비용 | 버전 혼재  
 ---|---|---|---  
-없음| 빠름| 낮음| 있음  
+없음 | 빠름 | 낮음 | 있음  
   
 ### 17.4 Linear 배포 (점진적 배포)
 
@@ -2361,15 +2372,15 @@ Canary와 차이: Canary는 "소량 먼저 → 한 번에 나머지", Linear는 
 
 AWS CodeDeploy 사전 정의 Linear 설정:
 
-설정 이름| 내용  
+설정 이름 | 내용  
 ---|---  
-`Linear10PercentEvery1Minute`| 1분마다 10%씩 증가  
-`Linear10PercentEvery2Minutes`| 2분마다 10%씩 증가  
-`Linear10PercentEvery3Minutes`| 3분마다 10%씩 증가  
-`Linear10PercentEvery10Minutes`| 10분마다 10%씩 증가  
-다운타임| 롤백| 비용| 버전 혼재  
+`Linear10PercentEvery1Minute` | 1분마다 10%씩 증가  
+`Linear10PercentEvery2Minutes` | 2분마다 10%씩 증가  
+`Linear10PercentEvery3Minutes` | 3분마다 10%씩 증가  
+`Linear10PercentEvery10Minutes` | 10분마다 10%씩 증가  
+다운타임 | 롤백 | 비용 | 버전 혼재  
 ---|---|---|---  
-없음| 빠름| 낮음| 있음  
+없음 | 빠름 | 낮음 | 있음  
   
 ### 17.5 A/B Testing 배포
 
@@ -2399,9 +2410,9 @@ AWS 구현 방법:
 
 적합한 경우: 개발/스테이징 환경, DB 스키마 변경으로 v1/v2 혼재가 불가능한 상황.
 
-다운타임| 롤백| 비용| 버전 혼재  
+다운타임 | 롤백 | 비용 | 버전 혼재  
 ---|---|---|---  
-**있음**|  중간| 없음| 없음  
+**있음** | 중간 | 없음 | 없음  
   
 ### 17.7 Shadow 배포 (트래픽 미러링)
 
@@ -2419,29 +2430,29 @@ AWS 구현 방법:
 
 AWS 구현: ALB 미러링 규칙, Istio/AWS App Mesh 트래픽 미러링 기능 활용.
 
-다운타임| 롤백| 비용| 사용자 영향  
+다운타임 | 롤백 | 비용 | 사용자 영향  
 ---|---|---|---  
-없음| 해당 없음| 높음 (v2 인프라)| **없음**  
+없음 | 해당 없음 | 높음 (v2 인프라) | **없음**  
   
 ### 17.8 배포 전략 종합 비교
 
-전략| 다운타임| 롤백 속도| 추가 비용| 버전 혼재| 주요 사용 환경  
+전략 | 다운타임 | 롤백 속도 | 추가 비용 | 버전 혼재 | 주요 사용 환경  
 ---|---|---|---|---|---  
-In-Place (Rolling)| 없음| 느림| 없음| 있음| 일반 EC2, 비용 절감  
-Blue/Green| 없음| **즉시**|  높음| 없음| 프로덕션, 즉시 롤백 필요  
-Canary| 없음| 빠름| 낮음| 있음| Lambda, ECS, 리스크 최소화  
-Linear| 없음| 빠름| 낮음| 있음| Lambda, ECS 점진 배포  
-A/B Testing| 없음| 빠름| 중간| 있음| 기능 비교, UX 최적화  
-Recreate| **있음**|  중간| 없음| 없음| 개발/스테이징  
-Shadow| 없음| —| 높음| 없음| 신버전 사전 성능 검증  
+In-Place (Rolling) | 없음 | 느림 | 없음 | 있음 | 일반 EC2, 비용 절감  
+Blue/Green | 없음 | **즉시** | 높음 | 없음 | 프로덕션, 즉시 롤백 필요  
+Canary | 없음 | 빠름 | 낮음 | 있음 | Lambda, ECS, 리스크 최소화  
+Linear | 없음 | 빠름 | 낮음 | 있음 | Lambda, ECS 점진 배포  
+A/B Testing | 없음 | 빠름 | 중간 | 있음 | 기능 비교, UX 최적화  
+Recreate | **있음** | 중간 | 없음 | 없음 | 개발/스테이징  
+Shadow | 없음 | — | 높음 | 없음 | 신버전 사전 성능 검증  
   
 **AWS CodeDeploy 대상별 지원 배포 방식** :
 
-배포 대상| 지원 배포 유형  
+배포 대상 | 지원 배포 유형  
 ---|---  
-EC2 / On-Premises| In-Place, Blue/Green  
-AWS Lambda| Canary, Linear, AllAtOnce  
-Amazon ECS| Canary, Linear, AllAtOnce (Blue/Green 기반)  
+EC2 / On-Premises | In-Place, Blue/Green  
+AWS Lambda | Canary, Linear, AllAtOnce  
+Amazon ECS | Canary, Linear, AllAtOnce (Blue/Green 기반)  
   
 * * *
 
@@ -2486,11 +2497,9 @@ Amazon ECS| Canary, Linear, AllAtOnce (Blue/Green 기반)
 
 ### 18.2 DR(재해 복구) 전략 — RPO와 RTO
 
-**RPO (Recovery Point Objective)** : 장애 발생 시 얼마나 최근 데이터까지 복구할 수 있는가  
-→ 데이터 백업 주기를 결정
+**RPO (Recovery Point Objective)** : 장애 발생 시 얼마나 최근 데이터까지 복구할 수 있는가 → 데이터 백업 주기를 결정
 
-**RTO (Recovery Time Objective)** : 장애 발생 시 얼마나 빨리 서비스를 복구해야 하는가  
-→ 복구 전략의 비용을 결정
+**RTO (Recovery Time Objective)** : 장애 발생 시 얼마나 빨리 서비스를 복구해야 하는가 → 복구 전략의 비용을 결정
 [code] 
     재해 발생 시각
         │
@@ -2506,12 +2515,12 @@ Amazon ECS| Canary, Linear, AllAtOnce (Blue/Green 기반)
 
 **4가지 DR 전략 비교** :
 
-전략| RPO| RTO| 비용| 설명  
+전략 | RPO | RTO | 비용 | 설명  
 ---|---|---|---|---  
-**백업 및 복원**|  시간 단위| 시간 단위| 매우 낮음| 스냅샷 백업, 장애 시 수동 재구축  
-**파일럿 라이트**|  10분 단위| 10분 단위| 낮음| 핵심 서비스(DB)만 상시 운영  
-**웜 스탠바이**|  분 단위| 분 단위| 중간| 모든 계층 축소 운영, 장애 시 확장  
-**멀티 사이트 Active/Active**|  실시간| 실시간| 매우 높음| 두 리전 동시 운영, 즉각 전환  
+**백업 및 복원** | 시간 단위 | 시간 단위 | 매우 낮음 | 스냅샷 백업, 장애 시 수동 재구축  
+**파일럿 라이트** | 10분 단위 | 10분 단위 | 낮음 | 핵심 서비스(DB)만 상시 운영  
+**웜 스탠바이** | 분 단위 | 분 단위 | 중간 | 모든 계층 축소 운영, 장애 시 확장  
+**멀티 사이트 Active/Active** | 실시간 | 실시간 | 매우 높음 | 두 리전 동시 운영, 즉각 전환  
   
 **전략 상세 설명** :
 
@@ -2530,7 +2539,7 @@ Amazon ECS| Canary, Linear, AllAtOnce (Blue/Green 기반)
 [code] 
     평상시:
         DR 리전: DB만 소규모 운영 (프라이머리와 복제)
-        
+    
     장애 시:
         DR 리전: 앱 서버, 로드밸런서 신속 가동
         Route53으로 트래픽 전환
@@ -2602,28 +2611,26 @@ Amazon ECS| Canary, Linear, AllAtOnce (Blue/Green 기반)
 
 **서비스 계층별 AWS 서비스 매핑** :
 
-계층| 서비스| 역할  
+계층 | 서비스 | 역할  
 ---|---|---  
-DNS| Route53| 도메인 → IP 변환, 장애 조치  
-CDN| CloudFront| 정적 콘텐츠 엣지 캐싱  
-스토리지| S3| 정적 파일, 빌드 아티팩트, 백업  
-컴퓨팅| EC2 + Auto Scaling| 가변 트래픽 자동 대응  
-로드 밸런싱| ALB / NLB| 트래픽 분산, 헬스 체크  
-컨테이너| ECS / EKS| 컨테이너 오케스트레이션  
-관계형 DB| RDS / Aurora| ACID 트랜잭션, Multi-AZ  
-NoSQL| DynamoDB| 무제한 확장, 밀리초 응답  
-캐싱| ElastiCache| DB 부하 감소, 응답 속도 향상  
-보안| IAM + SCP| 최소 권한 원칙 적용  
-CI/CD| CodePipeline + CodeBuild + CodeDeploy| 배포 자동화  
-하이브리드| Direct Connect / VPN| 온프레미스 연결  
+DNS | Route53 | 도메인 → IP 변환, 장애 조치  
+CDN | CloudFront | 정적 콘텐츠 엣지 캐싱  
+스토리지 | S3 | 정적 파일, 빌드 아티팩트, 백업  
+컴퓨팅 | EC2 + Auto Scaling | 가변 트래픽 자동 대응  
+로드 밸런싱 | ALB / NLB | 트래픽 분산, 헬스 체크  
+컨테이너 | ECS / EKS | 컨테이너 오케스트레이션  
+관계형 DB | RDS / Aurora | ACID 트랜잭션, Multi-AZ  
+NoSQL | DynamoDB | 무제한 확장, 밀리초 응답  
+캐싱 | ElastiCache | DB 부하 감소, 응답 속도 향상  
+보안 | IAM + SCP | 최소 권한 원칙 적용  
+CI/CD | CodePipeline + CodeBuild + CodeDeploy | 배포 자동화  
+하이브리드 | Direct Connect / VPN | 온프레미스 연결  
   
 * * *
 
 ## 생각 정리
 
-인프라 관점에서 보면 VPC가 네트워크 경계를 정의하고, ELB와 Auto Scaling이 트래픽 변화에 대응하며, RDS Multi-AZ와 DR 전략이 데이터 가용성을 보장한다. 그 위에 컨테이너와 Kubernetes를 올리면 배포 단위가 인스턴스에서 Pod로 내려오고, CI/CD 파이프라인이 이 전체 흐름을 자동화한다.  
-배포 전략을 깊게 들여다보면서 특히 인상적이었던 부분은, "새 버전을 올린다"는 행위 하나에도 다운타임 허용 여부, 롤백 속도, 비용, 버전 혼재 가능성을 모두 고려해 전략을 선택한다는 점이다. Blue/Green은 즉각적인 롤백이 가능한 대신 인프라 비용이 두 배가 되고, Canary는 리스크를 최소화하는 대신 운영 복잡도가 올라간다. 어떤 전략이 무조건 옳은 게 아니라, 서비스의 특성과 팀의 상황에 맞게 선택하는 것이 핵심이다.  
-클라우드는 가용성·확장성·보안·비용 최적화를 동시에 설계한다는 것을 실습을 진행하며 그리고 다음 프로젝트를 진행하며 많이 배운거같다.
+인프라 관점에서 보면 VPC가 네트워크 경계를 정의하고, ELB와 Auto Scaling이 트래픽 변화에 대응하며, RDS Multi-AZ와 DR 전략이 데이터 가용성을 보장한다. 그 위에 컨테이너와 Kubernetes를 올리면 배포 단위가 인스턴스에서 Pod로 내려오고, CI/CD 파이프라인이 이 전체 흐름을 자동화한다. 배포 전략을 깊게 들여다보면서 특히 인상적이었던 부분은, "새 버전을 올린다"는 행위 하나에도 다운타임 허용 여부, 롤백 속도, 비용, 버전 혼재 가능성을 모두 고려해 전략을 선택한다는 점이다. Blue/Green은 즉각적인 롤백이 가능한 대신 인프라 비용이 두 배가 되고, Canary는 리스크를 최소화하는 대신 운영 복잡도가 올라간다. 어떤 전략이 무조건 옳은 게 아니라, 서비스의 특성과 팀의 상황에 맞게 선택하는 것이 핵심이다. 클라우드는 가용성·확장성·보안·비용 최적화를 동시에 설계한다는 것을 실습을 진행하며 그리고 다음 프로젝트를 진행하며 많이 배운거같다.
 
 * * *
 
